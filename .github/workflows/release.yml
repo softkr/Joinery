@@ -67,6 +67,17 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      # Stamp the tag into the app (macOS Info.plist, Windows file properties).
+      # Windows needs a numeric version, so a pre-release suffix (-rc1) is dropped.
+      - name: Set version
+        if: github.ref_type == 'tag'
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          v="${v%%-*}"
+          jq --arg v "$v" '.info.productVersion = $v' wails.json > wails.json.tmp
+          mv wails.json.tmp wails.json
+          jq .info wails.json
+
       - name: Build
         run: |
           args=()
