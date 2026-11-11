@@ -131,23 +131,37 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
 .dim { color: var(--fg-dim); }
 .muted { color: var(--fg-dim); font-size: 12px; }
 
-/* ---- header ----
-   In the macOS desktop window the header is also the title bar (unified, 48px):
-   the native traffic lights sit about 24px from the top of the window, so the row
-   leaves 84px free on the left for them and can drag the window. */
+/* ---- window chrome ----
+   The sidebar runs the full height of the window. In the macOS desktop window
+   (hidden-inset title bar) its top strip holds the native traffic lights, and the
+   work column's header sits on the same 52px row, so the traffic lights, the page
+   title and the header buttons share one centre line. Elsewhere the native title
+   bar is outside the page, so that strip is not shown. */
+.sb-chrome { display: none; flex: none; height: 52px; --wails-draggable: drag; }
+html.mac.wails .sb-chrome { display: block; }
+.sb-brand { display: flex; align-items: center; gap: 8px; flex: none; height: 44px; padding: 0 8px 0 14px; --wails-draggable: drag; }
+html.mac.wails .sb-brand { height: 34px; padding-left: 18px; }
+.sb-brand img { width: 22px; height: 22px; display: block; }
+.sb-brand b { flex: 1; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+/* macOS: the sidebar toggle moves up into the traffic-light row, at its right end */
+html.mac.wails .sb-brand .side-toggle { position: absolute; top: 12px; right: 10px; }
 #toolbar {
-  display: flex; align-items: center; gap: 12px; flex: none; height: 44px; padding: 0 12px;
-  background: var(--bg-toolbar); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px; flex: none; height: 44px; padding: 0 12px 0 18px;
+  background: var(--bg-panel); border-bottom: 1px solid var(--line); --wails-draggable: drag;
 }
-html.mac.wails #toolbar { height: 48px; padding-left: 84px; background: var(--bg-titlebar); --wails-draggable: drag; }
-#toolbar button { --wails-draggable: no-drag; }
-.brand { display: flex; align-items: center; gap: 8px; flex: none; }
-.brand img { width: 22px; height: 22px; display: block; }
-.brand b { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
-.tb-spacer { flex: 1; min-width: 0; }
-#win-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--fg-dim); pointer-events: none; }
+html.mac.wails #toolbar { height: 52px; }
+#toolbar button, .sb-brand button { --wails-draggable: no-drag; }
+.side-show { display: none !important; }
+html.side-hidden .side-show { display: grid !important; }
+html.side-hidden #toolbar { padding-left: 10px; }
+html.mac.wails.side-hidden #toolbar { padding-left: 84px; }
+html.side-hidden #main { grid-template-columns: 1fr; } /* hidden sidebar + resizer leave the grid */
+html.side-hidden #sidebar, html.side-hidden #resizer { display: none; }
+#win-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; margin: 0; overflow: hidden; white-space: nowrap; font-size: 15px; font-weight: 400; pointer-events: none; }
+#win-title .wt-main { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 700; letter-spacing: -.01em; }
+#win-title .wt-sub { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; color: var(--fg-dim); }
 .cmdk-btn {
-  display: flex; align-items: center; gap: 8px; flex: none; width: 230px; height: 28px; padding: 0 6px 0 10px;
+  display: flex; align-items: center; gap: 8px; flex: 0 1 230px; min-width: 120px; height: 28px; padding: 0 6px 0 10px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--bg-side); color: var(--fg-dim); cursor: pointer;
 }
 .cmdk-btn:hover { border-color: color-mix(in srgb, var(--fg-dim) 55%, var(--line)); background: var(--bg-hover); }
@@ -167,10 +181,10 @@ html.mac.wails #toolbar { height: 48px; padding-left: 84px; background: var(--bg
 
 /* ---- main layout ---- */
 #main { flex: 1 1 0; display: grid; grid-template-columns: var(--side-w) 0 1fr; min-height: 0; }
-#sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg-side); border-right: 1px solid var(--line); }
+#sidebar { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg-side); border-right: 1px solid var(--line); }
 #resizer { cursor: col-resize; width: 7px; margin-left: -4px; z-index: 2; }
 #resizer:hover, #resizer.drag { background: var(--accent-soft); }
-.sb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: none; padding: 8px 8px 4px; }
+.sb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: none; padding: 2px 8px 4px; }
 .sbtn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--fg-dim); cursor: pointer; }
 .sbtn .i { width: 17px; height: 17px; }
 .sbtn:hover:not(:disabled) { background: var(--bg-hover); color: var(--fg); }

@@ -28,7 +28,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Joinery</title>
-  <link rel="icon" type="image/svg+xml" href="/static/joinery.svg">
+  <link rel="icon" type="image/svg+xml" href="/static/joinery-mark.svg">
   <script>
     // Theme before first paint: saved choice, else the system setting.
     (function () {
@@ -36,6 +36,7 @@
       try { t = localStorage.getItem('theme'); } catch (e) { /* storage unavailable */ }
       if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.dataset.theme = t;
+      try { if (localStorage.getItem('side-hidden') === '1') document.documentElement.classList.add('side-hidden'); } catch (e) { /* storage unavailable */ }
     })();
   </script>
   <link rel="stylesheet" href="/static/app.css">
@@ -47,15 +48,14 @@
 {{template "sprite"}}
 {{template "sprite2"}}
 
-<header id="toolbar">
-  <div class="brand"><img src="/static/joinery.svg" alt="" width="22" height="22"><b>Joinery</b></div>
-  <div class="tb-spacer"><span id="win-title"></span></div>
-  <button type="button" class="cmdk-btn" id="cmdk-btn" title="명령 팔레트">{{icon "search"}}<span>명령 · 테이블 검색</span><kbd id="cmdk-key">⌘K</kbd></button>
-  <button class="tb" data-action="theme" id="theme-btn" title="라이트 / 다크 전환" aria-label="테마 전환">{{icon "moon"}}{{icon "sun"}}</button>
-</header>
-
 <div id="main">
   <aside id="sidebar">
+    <!-- macOS: the top strip is the title bar area that holds the native traffic lights -->
+    <div class="sb-chrome"></div>
+    <div class="sb-brand">
+      <img src="/static/joinery-mark.svg" alt="" width="22" height="22"><b>Joinery</b>
+      <button type="button" class="tb side-toggle" data-action="side-toggle" title="사이드바 숨기기" aria-label="사이드바 숨기기">{{icon "sidebar"}}</button>
+    </div>
     <div class="sb-actions" id="sb-actions">
       <button class="sbtn" hx-get="/conn/new" hx-target="#modal" hx-swap="innerHTML" title="새 연결" aria-label="새 연결">{{icon "tb-newconn"}}</button>
       <button class="sbtn" data-action="connect" data-needs="closed" title="선택한 연결 열기" aria-label="연결 열기" disabled>{{icon "tb-connect"}}</button>
@@ -74,6 +74,12 @@
   </aside>
   <div id="resizer" role="separator" aria-orientation="vertical"></div>
   <section id="work">
+    <header id="toolbar">
+      <button type="button" class="tb side-show" data-action="side-toggle" title="사이드바 보이기" aria-label="사이드바 보이기">{{icon "sidebar"}}</button>
+      <h1 id="win-title"><b class="wt-main"></b><span class="wt-sub"></span></h1>
+      <button type="button" class="cmdk-btn" id="cmdk-btn" title="명령 팔레트">{{icon "search"}}<span>명령 · 테이블 검색</span><kbd id="cmdk-key">⌘K</kbd></button>
+      <button class="tb" data-action="theme" id="theme-btn" title="라이트 / 다크 전환" aria-label="테마 전환">{{icon "moon"}}{{icon "sun"}}</button>
+    </header>
     <div id="tabbar" role="tablist"></div>
     <div id="panels">
       <div id="welcome">
@@ -86,10 +92,9 @@
         </div>
       </div>
     </div>
+    <footer id="statusbar"><span id="st-left">준비</span><span id="st-right"></span></footer>
   </section>
 </div>
-
-<footer id="statusbar"><span id="st-left">준비</span><span id="st-right"></span></footer>
 
 <div id="modal"></div>
 <div id="toasts" role="region" aria-label="알림"></div>

@@ -84,6 +84,7 @@
     const t = tabs.get(key);
     if (t) t.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     updateStatus();
+    updateTitle();
   }
   const activeKey = () => [...tabs.keys()].find((k) => tabs.get(k).tab.classList.contains('active'));
 
@@ -138,6 +139,7 @@
     }
     $('#welcome').classList.toggle('gone', tabs.size > 0);
     updateStatus();
+    updateTitle();
   }
 
   function openTab({ key, title, tip, icon, url }) {
@@ -582,10 +584,17 @@
         if (!r || !r.d) return toast('트리에서 데이터베이스를 먼저 선택하세요', 'error');
         openNewTable(r); break;
       case 'theme': setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'); break;
+      case 'side-toggle': {
+        const hidden = root.classList.toggle('side-hidden');
+        store.set('side-hidden', hidden ? '1' : '');
+        $(hidden ? '#toolbar .side-show' : '#sidebar .side-toggle')?.focus();
+        break;
+      }
     }
   };
   $('#toolbar').addEventListener('click', onAction);
   $('#sb-actions').addEventListener('click', onAction);
+  $('.sb-brand').addEventListener('click', onAction);
 
   // ---- theme ---------------------------------------------------------------
   function setTheme(t) {
@@ -609,7 +618,7 @@
     const NEEDS = { conn: '연결을 선택하세요', closed: '닫힌 연결을 선택하세요', live: '열린 연결을 선택하세요', db: '데이터베이스를 선택하세요' };
     const iconOf = (el) => $$('svg', el).find((x) => getComputedStyle(x).display !== 'none');
     const commands = () => {
-      const out = [...$$('#sb-actions .sbtn'), ...$$('#theme-btn')].map((btn) => ({
+      const out = [...$$('#sb-actions .sbtn'), ...$$('#theme-btn'), ...$$('#sidebar .side-toggle')].map((btn) => ({
         label: btn.getAttribute('aria-label') || btn.title, icon: iconOf(btn), off: btn.disabled,
         hint: btn.disabled ? NEEDS[btn.dataset.needs] : '명령', run: () => btn.click(),
       }));
@@ -718,22 +727,36 @@
     e.currentTarget.setAttribute('aria-pressed', String(on));
   });
 
-  // ---- window title (shown in the desktop window's title row) ----------------
+  // ---- page title (top of the work column, on the traffic-light row) ---------
+  // Names what the work area shows: the active tab and its connection; with no
+  // tab open, the tree selection; with neither, how many connections are saved.
   function updateTitle() {
-    const parts = [];
-    if (selRow) {
+    let main = '';
+    let sub = '';
+    const key = activeKey();
+    if (key) {
+      main = $('.t-title', tabs.get(key).tab).textContent;
+      const conn = $$('#tree .row[data-node="conn"]').find((r) => r.dataset.c === key.split('|')[1]);
+      sub = conn ? conn.dataset.name : '';
+    } else if (selRow?.isConnected) {
       const conn = connRowOf(selRow);
-      if (conn) parts.push(conn.dataset.name);
-      for (const k of ['d', 's', 't']) if (selRow.dataset[k] && selRow.dataset.node !== 'conn') parts.push(selRow.dataset[k]);
+      const parts = [conn?.dataset.name];
+      if (selRow.dataset.node !== 'conn') for (const k of ['d', 's', 't']) parts.push(selRow.dataset[k]);
+      const shown = parts.filter(Boolean);
+      main = shown.pop() || '';
+      sub = shown.join(' › ');
+    } else {
+      const n = $$('#tree .row[data-node="conn"]').length;
+      main = n ? `연결 ${n}개` : '시작하기';
     }
-    const text = parts.length ? `${parts.join(' › ')} — Joinery` : 'Joinery';
-    $('#win-title').textContent = parts.join(' › ');
-    document.title = text;
+    $('#win-title .wt-main').textContent = main;
+    $('#win-title .wt-sub').textContent = sub;
+    document.title = main ? `${main} — Joinery` : 'Joinery';
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'F5') { e.preventDefault(); htmx.trigger(document.body, 'conns-changed'); }
   });
-  document.body.addEventListener('htmx:afterSwap', (e) => { if (e.target === tree) select(null); });
+  document.body.addEventListener('htmx:afterSwap', (e) => { if (e.target === tree) { select(null); updateTitle(); } });
   document.body.addEventListener('htmx:afterSettle', updateActions);
 
   // ---- sidebar resize ------------------------------------------------------
