@@ -79,17 +79,17 @@ jobs:
           VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
         run: |
           mkdir -p dist
-          name="DBCat-${VERSION}-${{ matrix.label }}"
+          name="Joinery-${VERSION}-${{ matrix.label }}"
           case "${{ runner.os }}" in
-            macOS)   ditto -c -k --keepParent build/bin/DBCat.app "dist/${name}.zip" ;;
-            Windows) powershell -NoProfile -Command "Compress-Archive -Path build/bin/DBCat.exe -DestinationPath dist/${name}.zip" ;;
-            Linux)   tar -czf "dist/${name}.tar.gz" -C build/bin DBCat ;;
+            macOS)   ditto -c -k --keepParent build/bin/Joinery.app "dist/${name}.zip" ;;
+            Windows) powershell -NoProfile -Command "Compress-Archive -Path build/bin/Joinery.exe -DestinationPath dist/${name}.zip" ;;
+            Linux)   tar -czf "dist/${name}.tar.gz" -C build/bin Joinery ;;
           esac
           ls -l dist
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: dbcat-${{ matrix.label }}
+          name: joinery-${{ matrix.label }}
           path: dist/*
           if-no-files-found: error
           retention-days: 14
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
-          pattern: dbcat-*
+          pattern: joinery-*
           merge-multiple: true
 
       - name: Checksums
@@ -119,4 +119,4 @@ jobs:
         run: |
           prerelease=""
           case "${TAG}" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "${TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --title "DBCat ${TAG}" --generate-notes --verify-tag ${prerelease}
+          gh release create "${TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --title "Joinery ${TAG}" --generate-notes --verify-tag ${prerelease}

@@ -1,4 +1,4 @@
-Third-party code bundled into the static files of DBCat
+Third-party code bundled into the static files of Joinery
 =========================================================
 
 htmx.min.js

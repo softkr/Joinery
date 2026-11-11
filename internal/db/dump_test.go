@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-var dumpHeaderRe = regexp.MustCompile(`(?m)^-- DBCat dump .*$`)
+var dumpHeaderRe = regexp.MustCompile(`(?m)^-- Joinery dump .*$`)
 
 func dumpString(t *testing.T, c *Conn, o DumpOptions) string {
 	t.Helper()

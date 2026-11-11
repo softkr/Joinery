@@ -103,7 +103,7 @@
     <button type="button" class="tbtn" title="행 추가" hx-get="/table/insert" hx-include="closest form" hx-target="#modal" hx-swap="innerHTML">{{icon "plus"}}행 추가</button>
     {{end}}
     {{if .Editable}}
-    <button type="button" class="tbtn" data-act="delete-row" title="선택한 행 삭제">{{icon "trash"}}행 삭제</button>
+    <button type="button" class="tbtn" data-act="delete-row" title="선택한 행 삭제 (⌘/Ctrl·Shift+클릭으로 여러 행 선택)">{{icon "trash"}}행 삭제</button>
     {{end}}
     {{if .Rows}}<button type="button" class="tbtn" data-act="form-view" title="선택한 행을 폼으로 보기 (이전/다음 이동)">{{icon "tb-form"}}폼 보기</button>{{end}}
     {{if .Cols}}
@@ -112,13 +112,14 @@
     <button type="button" class="tbtn" data-act="export" data-fmt="json" title="현재 필터·정렬 기준 전체 행을 JSON으로 저장">{{icon "download"}}JSON</button>
     {{end}}
     <span class="sep"></span>
-    <label class="filter">{{icon "filter"}}
+    <label class="filter{{if .Where}} on{{end}}"{{if .Where}} title="필터 적용 중"{{end}}>{{icon "filter"}}
       <input type="text" name="where" value="{{.Where}}" spellcheck="false" autocomplete="off"
              placeholder="WHERE 조건 입력 후 Enter (예: id &gt; 10 AND name LIKE 'a%')"
              hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}' hx-trigger="keydown[key=='Enter']">
+      {{if .Where}}<button type="button" class="filter-x" data-act="clear-where" title="필터 지우기" aria-label="필터 지우기">{{icon "close"}}</button>{{end}}
     </label>
     <button type="button" class="tbtn" hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}'>적용</button>
-    {{if .Editable}}<span class="tip">셀을 더블클릭해 편집 · Enter 저장 · Esc 취소 · ⌘/Ctrl+0 = NULL</span>
+    {{if .Editable}}<span class="tip">더블클릭 편집 · Enter/바깥 클릭 저장 · Esc 취소 · ⌘/Ctrl+0 = NULL · ⌘/Ctrl·Shift+클릭 여러 행 선택</span>
     {{else if .Cols}}<span class="tip">{{if .IsView}}뷰는 읽기 전용입니다{{else}}기본키가 없어 읽기 전용입니다{{end}}</span>{{end}}
   </div>
 
@@ -159,7 +160,7 @@
               hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}'>{{icon "first"}}</button>
       <button type="button" class="pbtn" title="이전 페이지" {{if le .Page 1}}disabled{{end}}
               hx-get="/table/data" hx-include="closest form" hx-vals='{"page":{{add .Page -1}}}'>{{icon "prev"}}</button>
-      <span class="pgno">{{.Page}} 페이지</span>
+      <span class="pgno"><input type="text" class="pgin" inputmode="numeric" value="{{.Page}}" data-size="{{.Size}}" title="페이지 번호 입력 후 Enter" aria-label="페이지 번호"><span class="pgtotal"></span> 페이지</span>
       <button type="button" class="pbtn" title="다음 페이지" {{if not .More}}disabled{{end}}
               hx-get="/table/data" hx-include="closest form" hx-vals='{"page":{{add .Page 1}}}'>{{icon "next"}}</button>
       <select name="size" title="페이지당 행 수" hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}' hx-trigger="change">
@@ -217,6 +218,8 @@
       <button type="submit" class="tbtn primary run">{{icon "play"}}실행</button>
       <button type="button" class="tbtn" data-act="format-sql" title="SQL 포맷 (선택 영역 또는 전체) · Alt+Shift+F">{{icon "format"}}포맷</button>
       {{if .HistoryOn}}<button type="button" class="tbtn" title="실행한 쿼리 기록" hx-get="/history" hx-vals='{"c":"{{.Ref.Conn}}"}' hx-target="#modal" hx-swap="innerHTML">{{icon "clock"}}기록</button>{{end}}
+      <button type="button" class="tbtn qcancel" data-act="cancel-query" title="실행 중인 쿼리 중지">{{icon "stop"}}중지</button>
+      <span class="qbusy" aria-live="polite"><i class="spin"></i>실행 중… <span class="qtime"></span></span>
       <span class="qctx">{{.ConnName}} <span class="dim">›</span> {{.Label}}</span>
       <span class="tip">⌘/Ctrl+Enter 실행 · 선택한 텍스트만 실행 · 여러 문장은 ; 로 구분 (오류 시 중단)</span>
     </div>

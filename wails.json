@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "DBCat",
-  "outputfilename": "DBCat",
+  "name": "Joinery",
+  "outputfilename": "Joinery",
   "frontend:install": "",
   "frontend:build": "",
   "author": {
@@ -9,7 +9,7 @@
   },
   "info": {
     "companyName": "Devora",
-    "productName": "DBCat",
+    "productName": "Joinery",
     "copyright": "Copyright (c) 2026 Devora (https://devora.kr)"
   }
 }

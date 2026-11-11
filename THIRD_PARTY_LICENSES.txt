@@ -1,7 +1,7 @@
-Third-party Go modules linked into the DBCat binary
+Third-party Go modules linked into the Joinery binary
 ===================================================
 
-DBCat itself is MIT licensed (see LICENSE). The binary also contains the modules below;
+Joinery itself is MIT licensed (see LICENSE). The binary also contains the modules below;
 each is used unmodified under its own license, reproduced in full after this list.
 The JavaScript bundled into the UI is listed in internal/web/static/THIRD_PARTY.txt.
 

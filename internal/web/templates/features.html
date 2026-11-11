@@ -109,7 +109,7 @@
   <datalist id="type-hints">{{range .Hints}}<option value="{{.}}">{{end}}</datalist>
 
   <div class="subbar">
-    <button type="button" class="tbtn primary" hx-post="/design/apply" hx-include="closest form" data-confirm-sql>{{icon "play"}}저장</button>
+    <button type="button" class="tbtn primary" hx-post="/design/apply" hx-include="closest form" data-confirm-sql>{{icon "check"}}저장</button>
     <span class="sep"></span>
     <button type="button" class="tbtn active" data-sub="fields">필드</button>
     <button type="button" class="tbtn" data-sub="indexes">인덱스</button>
@@ -121,10 +121,9 @@
     <button type="button" class="tbtn" data-act="add-fk"{{if not .FKAlter}} disabled title="SQLite는 기존 테이블에 외래 키를 추가할 수 없습니다 (새 테이블을 만들 때만 가능)"{{end}}>{{icon "plus"}}외래 키 추가</button>
     {{if .New}}
     <label class="tname">테이블 이름 <input name="t" required spellcheck="false" placeholder="new_table" aria-label="테이블 이름"></label>
-    {{else if not .Alter}}
-    <span class="tip">이 DB는 필드 이름 변경·추가·삭제만 지원합니다 (유형/NULL/기본값은 SQL 에디터에서)</span>
     {{end}}
   </div>
+  {{if and (not .New) (not .Alter)}}<div class="note">이 DB는 기존 필드의 이름 변경 · 추가 · 삭제만 지원합니다. 회색 칸(유형 · NOT NULL · 기본값)은 여기서 바꿀 수 없으며 SQL 에디터에서 변경하세요.</div>{{end}}
   <div class="design-msg" id="dm-{{.UID}}" aria-live="polite"></div>
 
   <div class="gridwrap sub" data-subpane="fields">

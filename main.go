@@ -162,7 +162,7 @@ func main() {
 
 	app := &App{srv: srv}
 	err = wails.Run(&options.App{
-		Title:     "DBCat",
+		Title:     "Joinery",
 		Width:     1360,
 		Height:    860,
 		MinWidth:  960,
@@ -202,7 +202,7 @@ func serveWeb(addr string, srv *web.Server) error {
 		defer cancel()
 		_ = hs.Shutdown(ctx)
 	}()
-	log.Printf("DBCat UI on http://%s", addr)
+	log.Printf("Joinery UI on http://%s", addr)
 	if err := hs.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

@@ -1,7 +1,8 @@
-/* dbcat — UI styles. Flat surfaces, hairline borders, one teal accent.
+/* Joinery — UI styles. Flat surfaces, hairline borders, one teal accent.
    data-theme on <html> is set before first paint from localStorage, else from the
    system setting. Colours are tokens: change them here, not in the rules below. */
 :root {
+  color-scheme: light;
   --bg-app: #eef1f3;
   --bg-toolbar: #ffffff;
   --bg-titlebar: #ffffff;
@@ -172,8 +173,9 @@ html.mac.wails #toolbar { height: 48px; padding-left: 84px; background: var(--bg
 .sb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: none; padding: 8px 8px 4px; }
 .sbtn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--fg-dim); cursor: pointer; }
 .sbtn .i { width: 17px; height: 17px; }
-.sbtn:hover { background: var(--bg-hover); color: var(--fg); }
-.sbtn:active { background: var(--accent-soft); }
+.sbtn:hover:not(:disabled) { background: var(--bg-hover); color: var(--fg); }
+.sbtn:active:not(:disabled) { background: var(--accent-soft); }
+.sbtn:disabled { opacity: .32; cursor: default; }
 .sb-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--line); }
 .side-search { display: flex; align-items: center; gap: 6px; flex: none; margin: 4px 8px 6px; padding: 0 4px 0 9px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); color: var(--fg-dim); }
 .side-search .i { width: 13px; height: 13px; }
@@ -239,7 +241,7 @@ html.mac.wails #toolbar { height: 48px; padding-left: 84px; background: var(--bg
 .welcome-card p.muted { margin: 16px 0 0; line-height: 1.7; text-wrap: balance; }
 
 /* ---- sub toolbar ---- */
-.subbar { display: flex; align-items: center; gap: 4px; padding: 5px 8px; background: var(--bg-head); border-bottom: 1px solid var(--line); flex: none; }
+.subbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 5px 8px; background: var(--bg-head); border-bottom: 1px solid var(--line); flex: none; }
 .subbar .sep { width: 1px; height: 18px; margin: 0 6px; background: var(--line); }
 .tbtn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; white-space: nowrap; }
 .tbtn .i { color: var(--accent); }
@@ -249,8 +251,8 @@ html.mac.wails #toolbar { height: 48px; padding-left: 84px; background: var(--bg
 .tbtn.primary .i { color: #fff; }
 .tbtn.primary:hover:not(:disabled) { filter: brightness(1.1); background: var(--btn); }
 .tbtn:disabled { opacity: .5; cursor: default; }
-.tip { flex: 0 1 auto; min-width: 0; margin-left: 8px; font-size: 11.5px; color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.filter { display: flex; align-items: center; gap: 6px; flex: 1 0 240px; max-width: 560px; padding: 0 8px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; color: var(--fg-dim); }
+.tip { flex: 1 1 220px; min-width: 0; margin-left: 8px; font-size: 11.5px; color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.filter { display: flex; align-items: center; gap: 6px; flex: 1 0 240px; max-width: 560px; padding: 0 4px 0 8px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 6px; color: var(--fg-dim); }
 .filter input { flex: 1; min-width: 0; padding: 4px 0; border: 0; outline: 0; background: none; font-family: var(--mono); font-size: 12px; color: var(--fg); }
 .filter:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
@@ -294,7 +296,10 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; mi
 .pbtn .i { width: 11px; height: 11px; }
 .pbtn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--line); }
 .pbtn:disabled { color: var(--fg-dim); opacity: .45; cursor: default; }
-.pgno { padding: 0 8px; }
+.pgno { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; white-space: nowrap; }
+.pgin { width: 44px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg-panel); text-align: center; outline: 0; }
+.pgin:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.pgtotal { color: var(--fg-dim); }
 .pager select { margin-left: 6px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg-panel); }
 .rowinfo { color: var(--fg-dim); white-space: nowrap; }
 .sqlbar { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--fg-dim); text-align: right; -webkit-user-select: text; user-select: text; }
@@ -338,7 +343,7 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; mi
 .dlg-tabs { display: flex; padding: 8px 16px 0; border-bottom: 1px solid var(--line); }
 .dlg-tabs span { padding: 4px 14px; border: 1px solid var(--line); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--bg-panel); position: relative; top: 1px; }
 .conn-form { padding: 16px 20px 12px; }
-.fld { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; margin-bottom: 10px; }
+.fld { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; margin-bottom: 8px; }
 .fld > span:first-child { text-align: right; color: var(--fg-dim); }
 .fld input, .fld select { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-panel); outline: 0; }
 .fld input:focus, .fld select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
@@ -359,7 +364,7 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; mi
 .ctxmenu button.danger:hover { background: var(--danger); color: var(--on-danger); }
 .ctxmenu hr { margin: 4px 6px; border: 0; border-top: 1px solid var(--line-soft); }
 #toasts { position: fixed; right: 16px; bottom: 36px; z-index: 70; display: flex; flex-direction: column; gap: 8px; }
-.toast { max-width: 420px; padding: 9px 14px; border-radius: 8px; background: #2b2d31; color: #fff; box-shadow: var(--shadow); font-size: 12.5px; border-left: 4px solid var(--ok); -webkit-user-select: text; user-select: text; word-break: break-word; }
+.toast { display: flex; align-items: flex-start; gap: 10px; max-width: 460px; padding: 9px 8px 9px 14px; border-radius: 8px; background: #2b2d31; color: #fff; box-shadow: var(--shadow); font-size: 12.5px; border-left: 4px solid var(--ok); -webkit-user-select: text; user-select: text; word-break: break-word; }
 .toast.error { border-left-color: #ff5a4f; }
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }
@@ -390,8 +395,10 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; mi
 .check input { width: auto !important; }
 .hint { margin: -2px 0 10px 120px; font-size: 11.5px; color: var(--fg-dim); }
 .hint code { font-family: var(--mono); }
-.conn-form { max-height: min(80vh, 760px); overflow: auto; }
+.conn-form { max-height: min(88vh, 820px); overflow: auto; }
+.designgrid td:has(> input:disabled) { background: var(--bg-head) !important; }
 .designgrid input:disabled { color: var(--fg-dim); cursor: not-allowed; }
+.designgrid input:disabled::placeholder { color: transparent; }
 .designgrid tr.dropped td { text-decoration: line-through; opacity: .5; }
 .rmbtn { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 4px; background: none; color: var(--fg-dim); cursor: pointer; }
 .rmbtn .i { width: 10px; height: 10px; }
@@ -533,7 +540,7 @@ pre.ddl { margin: 0; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-br
 .bk-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; }
 .bk-links .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; }
 .bk-links .link:hover { text-decoration: underline; }
-.bk-list { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 12px; background: var(--bg); }
+.bk-list { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 12px; background: var(--bg-panel); }
 .bk-item { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 12.5px; min-width: 0; }
 .bk-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bk-opts { border: 0; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
@@ -561,3 +568,43 @@ pre.ddl { margin: 0; font: 12px/1.55 var(--mono); white-space: pre-wrap; word-br
 .pal-item.active .i { color: var(--accent); }
 .pal-empty { padding: 22px; text-align: center; color: var(--fg-dim); }
 .pal-foot { display: flex; gap: 14px; padding: 7px 14px; border-top: 1px solid var(--line-soft); font-size: 11.5px; color: var(--fg-dim); }
+
+/* ---- focus, toasts, tab state ---- */
+:is(button, [role="tab"], select, input[type="checkbox"], .tree):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tree:focus-visible { outline-offset: -2px; }
+.tree:focus-visible .row.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+.toast .t-msg { flex: 1; min-width: 0; max-height: 40vh; overflow: auto; white-space: pre-wrap; }
+.toast .t-x { flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: none; color: #fff; opacity: .65; cursor: pointer; }
+.toast .t-x:hover { opacity: 1; background: rgba(255, 255, 255, .16); }
+.toast .t-x .i { width: 10px; height: 10px; }
+.tab.dirty .t-title::after { content: " •"; color: var(--accent); font-weight: 700; }
+.tab:focus-visible { outline-offset: -2px; }
+
+/* ---- filter state, multi-select ---- */
+.filter.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.filter-x { display: grid; place-items: center; flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--fg-dim); cursor: pointer; }
+.filter-x:hover { background: var(--bg-hover); color: var(--fg); }
+.filter-x .i { width: 9px; height: 9px; }
+
+/* ---- running query ---- */
+.spin { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+.qcancel, .qbusy { display: none; }
+.qform.htmx-request .qcancel { display: inline-flex; }
+.qform.htmx-request .qbusy { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12px; color: var(--fg-dim); white-space: nowrap; }
+.qcancel .i { color: var(--danger); }
+.conn-msg .busy { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-dim); }
+
+/* ---- ER view: the list actions and the info pane do not apply ---- */
+.objects-panel[data-mode="er"][data-cat="tables"] :is(.info-pane, [data-act="open-selected"], [data-act="design-selected"]) { display: none; }
+
+/* ---- context menu / palette extras ---- */
+.ctxmenu button:focus-visible { outline: 0; background: var(--accent-soft); }
+.pal-item .pal-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-item .pal-hint { flex: none; font-size: 11.5px; color: var(--fg-dim); }
+.pal-item.off { opacity: .45; }
+.pal-group { padding: 8px 10px 3px; font-size: 11px; font-weight: 600; color: var(--fg-dim); }
+/* the last column's resize handle must not stick out and force a horizontal scrollbar */
+.grid thead th:last-child .colres { right: 0; width: 5px; }
+/* the tab strip scrolls (wheel, keyboard, activating a tab) without a bar covering the tabs */
+#tabbar { scrollbar-width: none; }
+#tabbar::-webkit-scrollbar { display: none; }

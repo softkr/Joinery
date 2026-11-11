@@ -1,11 +1,11 @@
-# DBCat
+# Joinery
 
 가볍고 빠른 데스크톱 DB 클라이언트입니다. Wails + htmx, SQLite · PostgreSQL · MySQL/MariaDB를 지원합니다.
 
 ## 실행
 
 ```bash
-open build/bin/DBCat.app          # 이미 빌드된 앱 실행
+open build/bin/Joinery.app          # 이미 빌드된 앱 실행
 ```
 
 처음 실행하면 연결이 없습니다. 사이드바 위쪽의 **새 연결** 버튼을 눌러 샘플 DB를 추가하세요.
@@ -14,20 +14,20 @@ open build/bin/DBCat.app          # 이미 빌드된 앱 실행
 |---|---|
 | 연결 유형 | SQLite |
 | 연결 이름 | 데모 |
-| 데이터베이스 파일 | `/Volumes/work/DBCat/sample/demo.db` (`찾아보기…`로 선택 가능) |
+| 데이터베이스 파일 | `/Volumes/work/Joinery/sample/demo.db` (`찾아보기…`로 선택 가능) |
 
 ## 한 번씩 눌러 볼 것
 
 | 기능 | 방법 |
 |---|---|
 | 트리 탐색 | 연결 더블클릭 → `main` 더블클릭 → 테이블 / 뷰 목록 |
-| 데이터 보기 | 테이블 더블클릭 (`customers` 1,200행 · 페이징, 헤더 클릭 정렬, 필터창에 `city = '서울' AND vip = 1`) |
-| 셀 편집 | 셀 더블클릭 → Enter 저장 · Esc 취소 · `⌘/Ctrl+0` = NULL |
-| 행 추가 / 삭제 | 툴바 `행 추가`, 행 번호 클릭 후 `행 삭제` |
+| 데이터 보기 | 테이블 더블클릭 (`customers` 1,200행 · 기본 200행씩 페이징, 페이지 번호 입력 후 Enter로 이동, 헤더 클릭 정렬, 필터창에 `city = '서울' AND vip = 1` · 필터 오른쪽 ×로 해제) |
+| 셀 편집 | 셀 더블클릭 → Enter 또는 바깥 클릭으로 저장 · Esc 취소 · `⌘/Ctrl+0` = NULL |
+| 행 추가 / 삭제 | 툴바 `행 추가`, 행 클릭 후 `행 삭제` (`⌘/Ctrl+클릭` · `Shift+클릭`으로 여러 행 선택) |
 | 내보내기 | 툴바 `CSV` / `JSON` (현재 필터·정렬이 적용된 전체 행) |
 | 테이블 설계 | 테이블 우클릭 → `테이블 설계` (필드·인덱스 추가/삭제 → `SQL 미리보기` → `저장`) |
 | 새 테이블 | 데이터베이스 우클릭 → `새 테이블…` |
-| SQL 에디터 | `새 쿼리` — 자동 완성(`customers.` 입력), `⌘/Ctrl+Enter` 실행, 선택한 부분만 실행 |
+| SQL 에디터 | `새 쿼리` — 자동 완성(`customers.` 입력), `⌘/Ctrl+Enter` 실행, 선택한 부분만 실행, 실행 중에는 경과 시간과 `중지` 버튼 표시 |
 | 여러 문장 | `SELECT 1; SELECT 2;` 처럼 `;` 로 구분하면 문장별 결과 탭 (오류 시 중단) |
 | 쿼리 기록 | 에디터 툴바 `기록` — 검색, 가져오기, 삭제, 기록 끄기 |
 | 트리거 확인 | `UPDATE orders SET status='cancelled' WHERE id=1;` 후 `SELECT * FROM audit_log;` |
@@ -40,7 +40,8 @@ open build/bin/DBCat.app          # 이미 빌드된 앱 실행
 | 외래 키 | 테이블 설계 → `외래 키` 탭 (PostgreSQL/MySQL은 추가·삭제, SQLite는 새 테이블 생성 때만 정의 가능) |
 | SQL 포맷 / 주석 | 에디터 `포맷` 버튼 또는 `Alt+Shift+F` (선택 영역 우선), `⌘/Ctrl+/` 주석 토글 |
 | 셀 값 보기 | 셀 우클릭 → `상세 보기…` (긴 텍스트, JSON 정렬), 읽기 전용 그리드는 더블클릭. 헤더 경계 드래그로 컬럼 너비 조절 (더블클릭 = 내용에 맞춤) |
-| 명령 팔레트 | `⌘K` (Windows·Linux는 `Ctrl+K`) — 새 연결, 새 쿼리, 테마 전환 등을 검색해서 실행 |
+| 명령 팔레트 | `⌘K` (Windows·Linux는 `Ctrl+K`) — 명령(새 연결, 새 쿼리, 테마 전환 등), 트리에 펼쳐진 테이블, 열린 탭, 저장된 연결을 검색해서 실행 |
+| 키보드 | 트리: `↑↓` 이동 · `→←` 펼치기/접기 · `Enter` 열기 · `Shift+F10` 메뉴. 탭: `⌘/Ctrl+W` 닫기 · `Ctrl+Tab` / `⌘/Ctrl+Alt+←→` 전환. 실행하지 않은 쿼리나 저장하지 않은 설계가 있는 탭(제목에 • 표시)은 닫기 전에 확인합니다 |
 | 테마 | 헤더 오른쪽 달/해 버튼 (설정이 없으면 시스템 설정을 따릅니다) |
 
 ## 다른 DB에 연결
@@ -71,7 +72,7 @@ docker rm -f pg-try                 # 끝나면 정리
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1   # 최초 1회
-wails build                                                   # build/bin/DBCat.app
+wails build                                                   # build/bin/Joinery.app
 go run . -web 127.0.0.1:8080                                  # 창 없이 브라우저로 (루프백만 허용)
 go test ./...                                                 # 단위 테스트
 
@@ -91,9 +92,9 @@ git tag v0.1.0 && git push origin v0.1.0     # 태그에 `-`가 있으면(v0.2.0
 
 | 플랫폼 | 산출물 | 비고 |
 |---|---|---|
-| macOS | `DBCat-<버전>-macos-universal.zip` (Apple Silicon + Intel) | 공증(notarization)이 없어 처음 실행할 때 우클릭 → 열기가 필요합니다 |
-| Windows | `DBCat-<버전>-windows-amd64.zip` | WebView2 런타임 필요 (Windows 11은 기본 포함) |
-| Linux | `DBCat-<버전>-linux-amd64.tar.gz` | `libgtk-3-0`, `libwebkit2gtk-4.1-0` 필요 |
+| macOS | `Joinery-<버전>-macos-universal.zip` (Apple Silicon + Intel) | 공증(notarization)이 없어 처음 실행할 때 우클릭 → 열기가 필요합니다 |
+| Windows | `Joinery-<버전>-windows-amd64.zip` | WebView2 런타임 필요 (Windows 11은 기본 포함) |
+| Linux | `Joinery-<버전>-linux-amd64.tar.gz` | `libgtk-3-0`, `libwebkit2gtk-4.1-0` 필요 |
 
 Release에는 `SHA256SUMS.txt`도 함께 올라갑니다. Actions 탭의 `release` → `Run workflow`로 Release 없이 빌드만 시험할 수 있습니다.
 

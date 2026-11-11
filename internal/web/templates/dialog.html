@@ -6,7 +6,6 @@
 <div class="overlay" data-overlay>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
     <div class="dlg-title" id="dlg-title">{{if .Editing}}연결 편집{{else}}새 연결{{end}}</div>
-    <div class="dlg-tabs"><span class="active">일반</span></div>
     <form id="connform" class="conn-form" data-kind="{{.Kind}}" data-ssh="{{if .SSHOn}}1{{end}}" hx-post="/conn/save" hx-target="#conn-msg" hx-swap="innerHTML" autocomplete="off">
       <input type="hidden" name="id" value="{{.ID}}">
 
@@ -81,9 +80,9 @@
 
       <div class="dlg-foot">
         <span id="conn-msg" class="conn-msg" aria-live="polite"></span>
-        <button type="button" class="btn" hx-post="/conn/test" hx-include="#connform" hx-target="#conn-msg" hx-swap="innerHTML">연결 테스트</button>
+        <button type="button" class="btn" hx-post="/conn/test" hx-include="#connform" hx-target="#conn-msg" hx-swap="innerHTML" hx-disabled-elt="this">연결 테스트</button>
         <button type="button" class="btn" data-action="close-modal">취소</button>
-        <button type="submit" class="btn primary">확인</button>
+        <button type="submit" class="btn primary">저장</button>
       </div>
     </form>
   </div>

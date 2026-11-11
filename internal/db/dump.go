@@ -79,7 +79,7 @@ func (c *Conn) Dump(ctx context.Context, r Ref, o DumpOptions, w io.Writer) erro
 
 	bw := bufio.NewWriterSize(w, 64<<10)
 	d := &dumper{c: c, ctx: ctx, r: r, o: o, w: bw, tables: tables, views: views}
-	fmt.Fprintf(bw, "-- DBCat dump · %s · %s · %s\n-- 구조: %v · 데이터: %v · 테이블 %d개 · 뷰 %d개\n\n",
+	fmt.Fprintf(bw, "-- Joinery dump · %s · %s · %s\n-- 구조: %v · 데이터: %v · 테이블 %d개 · 뷰 %d개\n\n",
 		c.Config.Kind.Label(), orDefault(r.Schema, r.Database), time.Now().Format("2006-01-02 15:04:05"), o.Structure, o.Data, len(tables), len(views))
 	switch c.Config.Kind {
 	case SQLite:

@@ -1,4 +1,4 @@
-/* dbcat UI glue. The server renders HTML; this file only handles what htmx
+/* Joinery UI glue. The server renders HTML; this file only handles what htmx
    cannot: tabs, tree expansion, context menu, inline cell editing, dialogs. */
 (() => {
   'use strict';
@@ -19,12 +19,22 @@
   };
 
   // ---- toasts --------------------------------------------------------------
+  // Errors stay until dismissed (they are often long and worth copying);
+  // confirmations fade on their own unless the pointer is resting on them.
   function toast(msg, kind = 'ok') {
+    const error = kind === 'error';
     const el = document.createElement('div');
-    el.className = 'toast' + (kind === 'error' ? ' error' : '');
-    el.textContent = msg;
-    $('#toasts').appendChild(el);
-    setTimeout(() => el.remove(), kind === 'error' ? 9000 : 3500);
+    el.className = 'toast' + (error ? ' error' : '');
+    el.setAttribute('role', error ? 'alert' : 'status');
+    el.innerHTML = `<span class="t-msg"></span><button type="button" class="t-x" aria-label="알림 닫기">${svg('close')}</button>`;
+    $('.t-msg', el).textContent = msg;
+    $('.t-x', el).addEventListener('click', () => el.remove());
+    const box = $('#toasts');
+    box.appendChild(el);
+    while (box.children.length > 5) box.firstElementChild.remove();
+    if (error) return;
+    const arm = () => setTimeout(() => { if (el.matches(':hover')) arm(); else el.remove(); }, 3500);
+    arm();
   }
   document.body.addEventListener('toast', (e) => toast(e.detail.msg, e.detail.kind));
   document.body.addEventListener('htmx:responseError', (e) => {
@@ -45,7 +55,8 @@
           <button class="btn" data-v="0">취소</button><button class="btn primary" data-v="1"></button></div></div>`;
       wrap.children[0].children[1].textContent = message;
       $('.btn.primary', wrap).textContent = okLabel;
-      const done = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+      const back = document.activeElement;
+      const done = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey, true); back?.focus?.(); resolve(v); };
       const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } };
       wrap.addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v === '1'); });
       document.addEventListener('keydown', onKey, true);
@@ -71,15 +82,50 @@
       t.panel.classList.toggle('active', on);
     }
     const t = tabs.get(key);
+    if (t) t.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    updateStatus();
+  }
+  const activeKey = () => [...tabs.keys()].find((k) => tabs.get(k).tab.classList.contains('active'));
+
+  // Right side of the status bar: what the active tab is showing.
+  function updateStatus() {
+    const t = tabs.get(activeKey());
+    let text = '';
     if (t) {
-      t.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      $('#st-right').textContent = t.tab.title;
+      const parts = [t.tab.title];
+      const form = $('form.dataform', t.panel);
+      const res = $('.qresult', t.panel);
+      if (form) {
+        const n = $$('tbody tr.sel', form).length;
+        if (n > 1) parts.push(`${n}행 선택`);
+        const info = $('.rowinfo', form)?.textContent.replace(/\s+/g, ' ').trim();
+        if (info) parts.push(info);
+        if (form.elements.where?.value.trim()) parts.push('필터 적용 중');
+      } else if (res) {
+        const sum = $('.rsum', res) || $('.rpane:not([hidden]) .pbar > span', res) || $('.okbar', res);
+        if (sum) parts.push(sum.textContent.replace(/\s+/g, ' ').trim());
+      }
+      text = parts.join('  ·  ');
     }
+    $('#st-right').textContent = text;
   }
 
-  function closeTab(key) {
+  // A tab is "dirty" while it holds work that closing would throw away: an edited
+  // table design, or query text that has not been run (run queries are in the history).
+  function setDirty(panel, on) {
+    const t = tabs.get(panel?.dataset.key);
+    if (t) t.tab.classList.toggle('dirty', !!on);
+  }
+
+  async function closeTab(key, force = false) {
     const t = tabs.get(key);
     if (!t) return;
+    if (!force && t.tab.classList.contains('dirty')) {
+      activate(key);
+      const what = $('form.designform', t.panel) ? '저장하지 않은 설계 변경' : '실행하지 않은 쿼리';
+      if (!(await confirmDialog(`"${$('.t-title', t.tab).textContent}" 탭에 ${what}이 있습니다.\n닫으면 사라집니다. 닫을까요?`, '닫기'))) return;
+      if (!tabs.has(key)) return;
+    }
     const keys = [...tabs.keys()];
     const idx = keys.indexOf(key);
     t.tab.remove();
@@ -89,10 +135,9 @@
     if (rest.length) {
       const wasActive = t.tab.classList.contains('active');
       if (wasActive) activate(rest[Math.min(idx, rest.length - 1)]);
-    } else {
-      $('#st-right').textContent = '';
     }
     $('#welcome').classList.toggle('gone', tabs.size > 0);
+    updateStatus();
   }
 
   function openTab({ key, title, tip, icon, url }) {
@@ -100,6 +145,7 @@
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.setAttribute('role', 'tab');
+    tab.tabIndex = 0;
     tab.title = tip || title;
     tab.innerHTML = `<span class="ico ico-${icon}" style="margin:0">${svg(ICONS[icon] || icon)}</span><span class="t-title"></span>
       <button class="x" aria-label="탭 닫기">${svg('close')}</button>`;
@@ -108,10 +154,16 @@
       if (e.target.closest('.x')) closeTab(key); else activate(key);
     });
     tab.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); closeTab(key); } });
+    tab.addEventListener('keydown', (e) => {
+      if (e.target !== tab) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(key); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); cycleTab(e.key === 'ArrowRight' ? 1 : -1, true); }
+    });
     tabbar.appendChild(tab);
 
     const panel = document.createElement('div');
     panel.className = 'panel';
+    panel.dataset.key = key;
     panel.innerHTML = '<div class="loading-msg">불러오는 중…</div>';
     panels.appendChild(panel);
     tabs.set(key, { tab, panel });
@@ -121,8 +173,27 @@
   }
 
   function closeTabsFor(connId) {
-    for (const k of [...tabs.keys()]) if (k.split('|')[1] === connId) closeTab(k);
+    for (const k of [...tabs.keys()]) if (k.split('|')[1] === connId) closeTab(k, true);
   }
+  function cycleTab(step, focus = false) {
+    const keys = [...tabs.keys()];
+    if (keys.length < 2) return;
+    const next = keys[(keys.indexOf(activeKey()) + step + keys.length) % keys.length];
+    activate(next);
+    if (focus) tabs.get(next).tab.focus();
+  }
+  // Cmd/Ctrl+W closes the active tab; Ctrl+Tab and Cmd/Ctrl+Alt+arrows switch tabs.
+  document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'w') {
+      const k = activeKey();
+      if (k && !$('.overlay')) { e.preventDefault(); closeTab(k); }
+    } else if (e.ctrlKey && e.key === 'Tab') {
+      e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1);
+    } else if (mod && e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      e.preventDefault(); cycleTab(e.key === 'ArrowRight' ? 1 : -1);
+    }
+  });
 
   const qs = (o) => new URLSearchParams(Object.fromEntries(Object.entries(o).filter(([, v]) => v))).toString();
   const dbLabel = (r) => r.s || r.d;
@@ -159,8 +230,8 @@
 
   function openObjects(r) {
     openTab({
-      key: ['o', r.c, r.d, r.s].join('|'), title: `테이블 @${dbLabel(r)}`, tip: `테이블 @${dbLabel(r)}`,
-      icon: 'table', url: '/objects?' + qs({ c: r.c, d: r.d, s: r.s }),
+      key: ['o', r.c, r.d, r.s].join('|'), title: `${dbLabel(r)} 오브젝트`, tip: `${dbLabel(r)} — 오브젝트 목록`,
+      icon: r.s ? 'schema' : 'db', url: '/objects?' + qs({ c: r.c, d: r.d, s: r.s }),
     });
   }
   // sql: optional text to put into the new editor (e.g. an object definition)
@@ -175,6 +246,7 @@
         const ta = $('.panel.active textarea.editor');
         if (!ta) return;
         if (ta._ed) { ta._ed.set(sql); ta._ed.focus(); } else ta.value = sql;
+        markQuery(ta);
       });
     }
   }
@@ -199,9 +271,18 @@
 
   function connRowOf(row) { return $(':scope > .row', row.closest('#tree > li')); }
 
+  // Sidebar buttons are enabled only when the selection gives them something to act on.
+  function updateActions() {
+    const conn = selRow && selRow.isConnected ? connRowOf(selRow) : null;
+    const r = conn ? refOf(selRow) : null;
+    const ok = { conn: !!conn, closed: !!conn && !conn.dataset.live, live: !!conn && !!conn.dataset.live, db: !!r?.d };
+    $$('#sb-actions [data-needs]').forEach((b) => { b.disabled = !ok[b.dataset.needs]; });
+  }
+
   function select(row) {
     if (selRow) selRow.classList.remove('sel');
     selRow = row;
+    updateActions();
     if (!row) return;
     row.classList.add('sel');
     const conn = connRowOf(row);
@@ -233,6 +314,7 @@
         nodeOf(row).dataset.live = '1'; // lets the "connected only" filter keep it
         if (!$('.live', row)) row.insertAdjacentHTML('beforeend', '<span class="live" title="연결됨"></span>');
       }
+      updateActions();
     } else {
       delete kids.dataset.loaded;
     }
@@ -264,15 +346,59 @@
     if (e.target.closest('.tw')) toggle(row);
   });
 
-  tree.addEventListener('dblclick', async (e) => {
-    const row = e.target.closest('.row');
-    if (!row) return;
+  // Open what the row stands for: a table, a definition, or expand + list a database.
+  async function activateRow(row) {
     const kind = row.dataset.node;
     if (kind === 'table') return openTable(refOf(row), row.dataset.view === '1');
     if (kind === 'obj') { const o = defRef(row); return openDef(o, o.kind, o.id, o.name); }
     await toggle(row);
     if ((kind === 'db' || kind === 'schema') && nodeOf(row).classList.contains('open') && !$('.tree-error', kidsOf(row))) {
       openObjects(refOf(row));
+    }
+  }
+  tree.addEventListener('dblclick', (e) => {
+    const row = e.target.closest('.row');
+    if (row) activateRow(row);
+  });
+
+  // Keyboard: arrows move, Right/Left expand/collapse, Enter opens, Shift+F10 / Menu key opens the menu.
+  const visibleRows = () => $$('.row', tree).filter((r) => r.offsetParent !== null);
+  tree.addEventListener('focus', () => { if (!selRow?.isConnected) { const f = visibleRows()[0]; if (f) select(f); } });
+  tree.addEventListener('keydown', async (e) => {
+    if (e.target !== tree || e.metaKey || e.ctrlKey || e.altKey) return;
+    const rows = visibleRows();
+    if (!rows.length) return;
+    const cur = selRow?.isConnected ? selRow : null;
+    const i = cur ? rows.indexOf(cur) : -1;
+    const go = (row) => { if (row) { select(row); row.scrollIntoView({ block: 'nearest' }); } };
+    if (!cur) { // nothing selected yet: any navigation key starts at the top
+      if (['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) { e.preventDefault(); go(rows[0]); }
+      return;
+    }
+    const node = nodeOf(cur);
+    switch (e.key) {
+      case 'ArrowDown': e.preventDefault(); go(rows[Math.min(i + 1, rows.length - 1)]); break;
+      case 'ArrowUp': e.preventDefault(); go(rows[Math.max(i - 1, 0)]); break;
+      case 'Home': e.preventDefault(); go(rows[0]); break;
+      case 'End': e.preventDefault(); go(rows[rows.length - 1]); break;
+      case 'ArrowRight':
+        if (!cur) break;
+        e.preventDefault();
+        if (node.classList.contains('leaf')) break;
+        if (!node.classList.contains('open')) await toggle(cur, true);
+        else go($(':scope > .kids > li > .row', node));
+        break;
+      case 'ArrowLeft':
+        if (!cur) break;
+        e.preventDefault();
+        if (!node.classList.contains('leaf') && node.classList.contains('open')) toggle(cur, false);
+        else { const up = node.parentElement.closest('.node'); if (up) go($(':scope > .row', up)); }
+        break;
+      case 'Enter': if (cur) { e.preventDefault(); activateRow(cur); } break;
+      case 'F10': if (!e.shiftKey) break; // falls through
+      case 'ContextMenu':
+        if (cur) { e.preventDefault(); const b = cur.getBoundingClientRect(); treeMenu(cur, b.left + 40, b.bottom); }
+        break;
     }
   });
 
@@ -288,30 +414,57 @@
 
   // ---- context menu --------------------------------------------------------
   const menu = $('#ctxmenu');
-  function hideMenu() { menu.hidden = true; menu.innerHTML = ''; }
-  function showMenu(x, y, items) {
+  let menuBack = null;
+  function hideMenu(refocus = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
     menu.innerHTML = '';
+    if (refocus) menuBack?.focus?.();
+    menuBack = null;
+  }
+  function showMenu(x, y, items) {
+    menuBack = document.activeElement;
+    menu.innerHTML = '';
+    menu.setAttribute('role', 'menu');
     for (const it of items) {
       if (it === '-') { menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
+      b.setAttribute('role', 'menuitem');
       b.textContent = it.label;
       if (it.danger) b.className = 'danger';
-      b.addEventListener('click', () => { hideMenu(); it.fn(); });
+      b.addEventListener('click', () => { hideMenu(true); it.fn(); });
       menu.appendChild(b);
     }
     menu.hidden = false;
     const { width, height } = menu.getBoundingClientRect();
     menu.style.left = Math.max(4, Math.min(x, innerWidth - width - 4)) + 'px';
     menu.style.top = Math.max(4, Math.min(y, innerHeight - height - 4)) + 'px';
+    $('button', menu)?.focus({ preventScroll: true });
   }
+  menu.addEventListener('keydown', (e) => {
+    const items = $$('button', menu);
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      items[e.key === 'Home' ? 0 : items.length - 1]?.focus();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+    }
+  });
   document.addEventListener('click', (e) => { if (!menu.contains(e.target)) hideMenu(); });
-  document.addEventListener('scroll', hideMenu, true);
-  window.addEventListener('blur', hideMenu);
+  document.addEventListener('scroll', () => hideMenu(), true);
+  window.addEventListener('blur', () => hideMenu());
 
   tree.addEventListener('contextmenu', (e) => {
     const row = e.target.closest('.row');
     if (!row) return;
     e.preventDefault();
+    treeMenu(row, e.clientX, e.clientY);
+  });
+  function treeMenu(row, x, y) {
     select(row);
     const r = refOf(row);
     const kind = row.dataset.node;
@@ -358,8 +511,8 @@
       );
       if (anc) items.push({ label: '새로고침', fn: () => refreshNode(anc) });
     }
-    showMenu(e.clientX, e.clientY, items);
-  });
+    showMenu(x, y, items);
+  }
 
   // Fetch a definition and open it in a new query tab.
   async function defToQuery(r, kind, id) {
@@ -445,18 +598,39 @@
   });
 
   // ---- command palette (Cmd/Ctrl+K) ----------------------------------------------
-  // Lists the sidebar actions and the theme switch; running one clicks its button,
-  // so it behaves exactly like the button (including the "select a database first" hints).
+  // Lists the sidebar actions and the theme switch (running one clicks its button, so it
+  // behaves exactly like the button), the open tabs, the saved connections and every
+  // table the tree has loaded so far.
   (() => {
     const host = $('#palette');
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
     $$('#cmdk-key, .cmdk-hint').forEach((k) => { k.textContent = mac ? '⌘K' : 'Ctrl K'; });
 
-    const commands = () => [...$$('#sb-actions .sbtn'), ...$$('#theme-btn')].map((btn) => ({
-      label: btn.getAttribute('aria-label') || btn.title,
-      icon: $$('svg', btn).find((s) => getComputedStyle(s).display !== 'none'),
-      run: () => btn.click(),
-    }));
+    const NEEDS = { conn: '연결을 선택하세요', closed: '닫힌 연결을 선택하세요', live: '열린 연결을 선택하세요', db: '데이터베이스를 선택하세요' };
+    const iconOf = (el) => $$('svg', el).find((x) => getComputedStyle(x).display !== 'none');
+    const commands = () => {
+      const out = [...$$('#sb-actions .sbtn'), ...$$('#theme-btn')].map((btn) => ({
+        label: btn.getAttribute('aria-label') || btn.title, icon: iconOf(btn), off: btn.disabled,
+        hint: btn.disabled ? NEEDS[btn.dataset.needs] : '명령', run: () => btn.click(),
+      }));
+      const cur = activeKey();
+      if (cur) out.push({ label: '현재 탭 닫기', icon: iconOf($('.x', tabs.get(cur).tab)), hint: mac ? '⌘W' : 'Ctrl+W', run: () => closeTab(cur) });
+      for (const [k, t] of tabs) {
+        if (k !== cur) out.push({ label: $('.t-title', t.tab).textContent, icon: iconOf(t.tab), hint: '열린 탭', run: () => activate(k) });
+      }
+      for (const row of $$('#tree .row[data-node="table"]')) {
+        const r = refOf(row);
+        const conn = connRowOf(row);
+        out.push({
+          label: r.t, icon: iconOf(row), hint: `${row.dataset.view === '1' ? '뷰' : '테이블'} · ${conn?.dataset.name || ''} › ${dbLabel(r)}`,
+          run: () => { select(row); openTable(r, row.dataset.view === '1'); },
+        });
+      }
+      for (const row of $$('#tree .row[data-node="conn"]')) {
+        if (!row.dataset.live) out.push({ label: row.dataset.name, icon: iconOf(row), hint: '연결 열기', run: () => { select(row); toggle(row, true); } });
+      }
+      return out;
+    };
 
     const close = () => { host.hidden = true; host.replaceChildren(); };
     const open = () => {
@@ -464,13 +638,13 @@
       let shown = all;
       let cur = 0;
       host.innerHTML = '<div class="pal" role="dialog" aria-label="명령 팔레트"><div class="pal-input">' + svg('search') +
-        '<input type="text" placeholder="명령 검색…" spellcheck="false" autocomplete="off"></div>' +
+        '<input type="text" placeholder="명령, 테이블, 열린 탭 검색…" aria-label="명령 검색" spellcheck="false" autocomplete="off"></div>' +
         '<div class="pal-list" role="listbox"></div>' +
         '<div class="pal-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 이동</span><span><kbd>Enter</kbd> 실행</span><span><kbd>Esc</kbd> 닫기</span></div></div>';
       host.hidden = false;
       const input = $('input', host);
       const list = $('.pal-list', host);
-      const run = (c) => { close(); if (c) setTimeout(c.run, 0); };
+      const run = (c) => { if (!c || c.off) return; close(); setTimeout(c.run, 0); };
       const paint = () => {
         list.replaceChildren();
         if (!shown.length) {
@@ -480,14 +654,23 @@
           list.appendChild(none);
           return;
         }
-        shown.forEach((c, i) => {
+        shown.slice(0, 60).forEach((c, i) => {
           const row = document.createElement('div');
-          row.className = 'pal-item' + (i === cur ? ' active' : '');
+          row.className = 'pal-item' + (i === cur ? ' active' : '') + (c.off ? ' off' : '');
           row.setAttribute('role', 'option');
+          row.setAttribute('aria-selected', String(i === cur));
+          if (c.off) row.setAttribute('aria-disabled', 'true');
           if (c.icon) row.appendChild(c.icon.cloneNode(true));
           const label = document.createElement('span');
+          label.className = 'pal-label';
           label.textContent = c.label;
           row.appendChild(label);
+          if (c.hint) {
+            const hint = document.createElement('span');
+            hint.className = 'pal-hint';
+            hint.textContent = c.hint;
+            row.appendChild(hint);
+          }
           row.addEventListener('mousemove', () => { if (cur !== i) { cur = i; paint(); } });
           row.addEventListener('click', () => run(c));
           list.appendChild(row);
@@ -496,14 +679,15 @@
       };
       input.addEventListener('input', () => {
         const q = input.value.trim().toLowerCase();
-        shown = all.filter((c) => c.label.toLowerCase().includes(q));
+        shown = all.filter((c) => c.label.toLowerCase().includes(q) || (c.hint || '').toLowerCase().includes(q));
         cur = 0;
         paint();
       });
       input.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
-          if (shown.length) cur = (cur + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length;
+          const n = Math.min(shown.length, 60);
+          if (n) cur = (cur + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
           paint();
         } else if (e.key === 'Enter') {
           e.preventDefault();
@@ -542,7 +726,7 @@
       if (conn) parts.push(conn.dataset.name);
       for (const k of ['d', 's', 't']) if (selRow.dataset[k] && selRow.dataset.node !== 'conn') parts.push(selRow.dataset[k]);
     }
-    const text = parts.length ? `${parts.join(' › ')} — DBCat` : 'DBCat';
+    const text = parts.length ? `${parts.join(' › ')} — Joinery` : 'Joinery';
     $('#win-title').textContent = parts.join(' › ');
     document.title = text;
   }
@@ -550,6 +734,7 @@
     if (e.key === 'F5') { e.preventDefault(); htmx.trigger(document.body, 'conns-changed'); }
   });
   document.body.addEventListener('htmx:afterSwap', (e) => { if (e.target === tree) select(null); });
+  document.body.addEventListener('htmx:afterSettle', updateActions);
 
   // ---- sidebar resize ------------------------------------------------------
   (() => {
@@ -583,8 +768,21 @@
     const tr = e.target.closest('table.grid tbody tr');
     if (tr && !e.target.closest('td.editing')) {
       const table = tr.closest('table');
-      $$('tr.sel', table).forEach((x) => x.classList.remove('sel'));
-      tr.classList.add('sel');
+      const multi = table.classList.contains('editable') && tr.dataset.pk;
+      if (multi && (e.metaKey || e.ctrlKey)) {
+        tr.classList.toggle('sel');
+        table._anchor = tr;
+      } else if (multi && e.shiftKey && table._anchor?.isConnected) {
+        const rows = $$('tbody tr', table);
+        const [a, b] = [rows.indexOf(table._anchor), rows.indexOf(tr)].sort((x, y) => x - y);
+        rows.forEach((x, i) => x.classList.toggle('sel', i >= a && i <= b));
+        getSelection()?.removeAllRanges();
+      } else {
+        $$('tr.sel', table).forEach((x) => x.classList.remove('sel'));
+        tr.classList.add('sel');
+        table._anchor = tr;
+      }
+      updateStatus();
     }
     const rtab = e.target.closest('[data-rtab]');
     if (rtab) { // statement result tabs
@@ -621,7 +819,14 @@
       case 'query-here': openQuery(ctxOf(act)); break;
       case 'backup': openBackup(ctxOf(act)); break;
       case 'restore': openRestore(ctxOf(act)); break;
-      case 'delete-row': deleteSelectedRow(act); break;
+      case 'delete-row': deleteSelectedRows(act); break;
+      case 'clear-where': {
+        const f = act.closest('form.dataform');
+        f.elements.where.value = '';
+        reloadData(f, 1);
+        break;
+      }
+      case 'cancel-query': htmx.trigger(act.closest('.qform'), 'htmx:abort'); break;
       case 'format-sql': {
         const ed = $('textarea.editor', act.closest('.query-panel'))?._ed;
         if (ed) { ed.format(); ed.focus(); } else toast('에디터를 불러오지 못했습니다', 'error');
@@ -630,7 +835,7 @@
       case 'add-field': addDesignRow(act, 'f'); break;
       case 'add-index': addDesignRow(act, 'x'); break;
       case 'add-fk': addDesignRow(act, 'k'); break;
-      case 'rm-row': act.closest('tr').remove(); break;
+      case 'rm-row': setDirty(act.closest('.panel'), true); act.closest('tr').remove(); break;
       case 'export': exportTable(act.closest('form.dataform'), act.dataset.fmt); break;
       case 'export-result': exportResult(act, act.dataset.fmt); break;
     }
@@ -639,6 +844,42 @@
   // Dropping an existing field/index is a checkbox; strike the row through.
   panels.addEventListener('change', (e) => {
     if (e.target.matches('input[name$=".drop"]')) e.target.closest('tr').classList.toggle('dropped', e.target.checked);
+    if (e.target.closest('form.designform')) setDirty(e.target.closest('.panel'), true);
+    if (e.target.matches('.pgin')) gotoPage(e.target);
+  });
+  panels.addEventListener('input', (e) => {
+    if (e.target.closest('form.designform')) setDirty(e.target.closest('.panel'), true);
+  });
+  panels.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('.pgin')) { e.preventDefault(); gotoPage(e.target); }
+  });
+
+  // Reload a data grid at a page, keeping its filter, sort and page size.
+  function reloadData(form, page) {
+    if (page) form.elements.page.value = String(page);
+    $('[title="새로고침"]', form)?.click();
+  }
+  function gotoPage(input) {
+    const form = input.closest('form.dataform');
+    const max = parseInt(input.dataset.pages || '', 10);
+    let n = parseInt(input.value, 10);
+    if (!(n >= 1)) n = 1;
+    if (max >= 1) n = Math.min(n, max);
+    if (String(n) === form.elements.page.value) { input.value = String(n); return; }
+    reloadData(form, n);
+  }
+  // The row count arrives after the grid: derive the page count from it.
+  document.body.addEventListener('htmx:afterSwap', (e) => {
+    const total = e.target.matches?.('.total') && $('[data-total]', e.target);
+    if (total) {
+      const input = $('.pgin', e.target.closest('form.dataform'));
+      const pages = Math.max(1, Math.ceil(parseInt(total.dataset.total, 10) / parseInt(input.dataset.size, 10)));
+      input.dataset.pages = String(pages);
+      $('.pgtotal', input.parentElement).textContent = `/ ${pages.toLocaleString()}`;
+    }
+    const panel = e.target.closest?.('.panel');
+    if (panel === e.target) setDirty(panel, false); // the whole tab was re-rendered (e.g. a design was applied)
+    updateStatus();
   });
 
   // ---- designer rows -------------------------------------------------------
@@ -649,6 +890,7 @@
     const tpl = $(`template[data-tpl="${kind}"]`, form);
     const body = $(`tbody[data-rows="${kind}"]`, form);
     body.insertAdjacentHTML('beforeend', tpl.innerHTML.replaceAll('__I__', String(idx)));
+    setDirty(form.closest('.panel'), true);
     counter.value = String(idx + 1);
     $$('[data-sub]', form).find((b) => b.dataset.sub === { f: 'fields', x: 'indexes', k: 'fks' }[kind])?.click();
     $('input:not([type=hidden])', body.lastElementChild)?.focus();
@@ -824,23 +1066,37 @@
   // page or put field values such as passwords into the URL.
   document.addEventListener('submit', (e) => e.preventDefault());
 
-  async function deleteSelectedRow(btn) {
+  // Rows are deleted one request at a time; the first failure stops the run so the
+  // message names the row that was refused, and the grid reloads either way.
+  async function deleteSelectedRows(btn) {
     const form = btn.closest('form.dataform');
-    const tr = $('tbody tr.sel', form);
-    if (!tr) return toast('삭제할 행을 먼저 선택하세요 (행 번호 클릭)', 'error');
-    const pk = JSON.parse(tr.dataset.pk);
-    const desc = Object.entries(pk).map(([k, v]) => `${k} = ${v}`).join(', ');
-    if (!(await confirmDialog(`다음 행을 삭제할까요?\n${desc}\n\n이 작업은 되돌릴 수 없습니다.`, '삭제'))) return;
-    htmx.ajax('POST', '/table/delete', {
-      source: form, swap: 'none',
-      values: { c: form.dataset.c, d: form.dataset.d, s: form.dataset.s, t: form.dataset.t, pk: tr.dataset.pk },
-    });
+    const trs = $$('tbody tr.sel[data-pk]', form);
+    if (!trs.length) return toast('삭제할 행을 먼저 선택하세요 (⌘/Ctrl·Shift+클릭으로 여러 행)', 'error');
+    const descOf = (tr) => Object.entries(JSON.parse(tr.dataset.pk)).map(([k, v]) => `${k} = ${v}`).join(', ');
+    const lines = trs.slice(0, 8).map(descOf);
+    if (trs.length > 8) lines.push(`… 외 ${trs.length - 8}개 행`);
+    const head = trs.length > 1 ? `선택한 ${trs.length}개 행을 삭제할까요?` : '다음 행을 삭제할까요?';
+    if (!(await confirmDialog(`${head}\n${lines.join('\n')}\n\n이 작업은 되돌릴 수 없습니다.`, '삭제'))) return;
+    let done = 0;
+    for (const tr of trs) {
+      const body = new URLSearchParams({ c: form.dataset.c, d: form.dataset.d, s: form.dataset.s, t: form.dataset.t, pk: tr.dataset.pk });
+      let res;
+      try {
+        res = await fetch('/table/delete', { method: 'POST', headers: { 'HX-Request': 'true' }, body });
+      } catch { toast('요청을 보낼 수 없습니다', 'error'); break; }
+      if (!res.ok) {
+        let msg = '삭제하지 못했습니다';
+        try { msg = JSON.parse(res.headers.get('HX-Trigger')).toast.msg; } catch { /* keep default */ }
+        toast(`${descOf(tr)}: ${msg}`, 'error');
+        break;
+      }
+      done += 1;
+    }
+    if (done) toast(`${done}개 행을 삭제했습니다`);
+    reloadData(form);
   }
   document.body.addEventListener('htmx:afterRequest', (e) => {
     const { pathInfo, successful, elt } = e.detail;
-    if (pathInfo?.requestPath === '/table/delete' && successful) {
-      $('[title="새로고침"]', elt)?.click();
-    }
     if (pathInfo?.requestPath === '/table/cell' && elt.matches?.('td')) finishEdit(elt, successful);
   });
 
@@ -869,7 +1125,8 @@
         input.placeholder = 'NULL';
       }
     });
-    input.addEventListener('blur', () => { if (td.classList.contains('editing') && !td._saving) cancelEdit(td); });
+    // Leaving the cell saves, like the form view; only Esc discards.
+    input.addEventListener('blur', () => { if (td.classList.contains('editing') && !td._saving && td._edit) commitEdit(td, input); });
   }
 
   function cancelEdit(td) {
@@ -929,6 +1186,38 @@
     if (sel) e.detail.parameters.sql = sel;
   });
 
+  // Query text that has been run is in the history; anything else is unsaved work.
+  function markQuery(ta) {
+    const text = ta.value.trim();
+    setDirty(ta.closest('.panel'), text !== '' && text !== (ta._ran ?? ''));
+  }
+  panels.addEventListener('input', (e) => { if (e.target.matches('textarea.editor')) markQuery(e.target); });
+  document.body.addEventListener('htmx:beforeRequest', (e) => {
+    const form = e.detail.elt;
+    if (form.matches?.('.qform')) {
+      const ta = $('textarea', form);
+      ta._ran = ta.value.trim();
+      markQuery(ta);
+      const out = $('.qtime', form);
+      const t0 = performance.now();
+      out.textContent = '';
+      clearInterval(form._tick);
+      form._tick = setInterval(() => { out.textContent = `${((performance.now() - t0) / 1000).toFixed(1)}초`; }, 100);
+    }
+    // Connecting can take a while (SSH, TLS): say so instead of looking frozen.
+    const path = e.detail.pathInfo?.requestPath;
+    if (path === '/conn/test' || path === '/conn/save') {
+      const msg = $('#conn-msg');
+      if (msg) msg.innerHTML = `<span class="busy"><i class="spin"></i>${path === '/conn/test' ? '연결 확인 중…' : '저장 중…'}</span>`;
+    }
+  });
+  const stopTick = (e) => { const f = e.detail.elt; if (f.matches?.('.qform')) { clearInterval(f._tick); f._tick = null; } };
+  document.body.addEventListener('htmx:afterRequest', stopTick);
+  document.body.addEventListener('htmx:xhr:abort', (e) => {
+    stopTick(e);
+    if (e.detail.elt.matches?.('.qform')) toast('쿼리 실행을 중지했습니다');
+  });
+
   // Replace the plain <textarea> with the CodeMirror editor. The textarea stays
   // (hidden) as the form field, so everything keeps working without editor.js.
   function enhanceEditor(ta) {
@@ -940,7 +1229,7 @@
     ta.hidden = true;
     const ed = window.DBCatEditor.create(host, {
       doc: ta.value, kind: form.dataset.kind, placeholder: ta.placeholder,
-      onChange: (v) => { ta.value = v; },
+      onChange: (v) => { ta.value = v; markQuery(ta); },
       onRun: () => form.requestSubmit(),
       onError: (m) => toast(m, 'error'),
     });
@@ -1408,7 +1697,30 @@
 
   // ---- connection dialog ---------------------------------------------------
   const modal = $('#modal');
-  const closeModal = () => { modal.innerHTML = ''; };
+  let modalBack = null;
+  const closeModal = () => {
+    if (!modal.firstChild) return;
+    modal.innerHTML = '';
+    if (modalBack?.isConnected) modalBack.focus();
+    modalBack = null;
+  };
+  document.body.addEventListener('htmx:beforeSwap', (e) => {
+    if (e.target === modal && !modal.firstChild) modalBack = document.activeElement;
+  });
+  // Keep Tab inside the topmost dialog instead of wandering into the page behind it.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const top = $$('.overlay').pop();
+    if (!top) return;
+    const items = $$('button, input, select, textarea, [tabindex="0"]', top)
+      .filter((x) => !x.disabled && x.type !== 'hidden' && x.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!top.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   const closeModalNow = closeModal;
   // Defer: htmx fires the other HX-Trigger events on the form that lives inside
   // the modal; removing it first would make them miss document.body.
@@ -1451,13 +1763,13 @@
     const ins = $('.ins-form', modal);
     if (ins) { $('.ins-val:not(:disabled)', ins)?.focus(); return; }
     const form = $('#connform', modal);
-    if (!form) return;
+    if (!form) { if (!modal.contains(document.activeElement)) $('input:not([type=hidden]), select, button', modal)?.focus(); return; }
     syncKind(form);
     if (window.go?.main?.App?.PickFile) $$('[data-action=pick-file]', form).forEach((b) => { b.hidden = false; });
     $('input[name=name]', form).focus();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!menu.hidden) hideMenu(); else if (modal.firstChild) closeModal();
+    if (!menu.hidden) hideMenu(true); else if (modal.firstChild) closeModal();
   });
 })();

@@ -32,7 +32,7 @@ var staticFS embed.FS
 const (
 	metaTimeout  = 30 * time.Second
 	queryTimeout = 120 * time.Second
-	defaultSize  = 500
+	defaultSize  = 200
 )
 
 var pageSizes = []int{100, 200, 500, 1000}
@@ -537,7 +537,7 @@ func (s *Server) tableCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, "전체 %s행", fmtRows(n))
+	fmt.Fprintf(w, `<span data-total="%d">전체 %s행</span>`, n, fmtRows(n))
 }
 
 func parsePK(raw string) (map[string]string, error) {

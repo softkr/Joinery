@@ -27,8 +27,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>DBCat</title>
-  <link rel="icon" type="image/svg+xml" href="/static/dbcat.svg">
+  <title>Joinery</title>
+  <link rel="icon" type="image/svg+xml" href="/static/joinery.svg">
   <script>
     // Theme before first paint: saved choice, else the system setting.
     (function () {
@@ -48,9 +48,9 @@
 {{template "sprite2"}}
 
 <header id="toolbar">
-  <div class="brand"><img src="/static/dbcat.svg" alt="" width="22" height="22"><b>DBCat</b></div>
+  <div class="brand"><img src="/static/joinery.svg" alt="" width="22" height="22"><b>Joinery</b></div>
   <div class="tb-spacer"><span id="win-title"></span></div>
-  <button type="button" class="cmdk-btn" id="cmdk-btn" title="명령 팔레트">{{icon "search"}}<span>명령 검색</span><kbd id="cmdk-key">⌘K</kbd></button>
+  <button type="button" class="cmdk-btn" id="cmdk-btn" title="명령 팔레트">{{icon "search"}}<span>명령 · 테이블 검색</span><kbd id="cmdk-key">⌘K</kbd></button>
   <button class="tb" data-action="theme" id="theme-btn" title="라이트 / 다크 전환" aria-label="테마 전환">{{icon "moon"}}{{icon "sun"}}</button>
 </header>
 
@@ -58,19 +58,19 @@
   <aside id="sidebar">
     <div class="sb-actions" id="sb-actions">
       <button class="sbtn" hx-get="/conn/new" hx-target="#modal" hx-swap="innerHTML" title="새 연결" aria-label="새 연결">{{icon "tb-newconn"}}</button>
-      <button class="sbtn" data-action="connect" title="선택한 연결 열기" aria-label="연결 열기">{{icon "tb-connect"}}</button>
-      <button class="sbtn" data-action="disconnect" title="선택한 연결 닫기" aria-label="연결 닫기">{{icon "tb-disconnect"}}</button>
+      <button class="sbtn" data-action="connect" data-needs="closed" title="선택한 연결 열기" aria-label="연결 열기" disabled>{{icon "tb-connect"}}</button>
+      <button class="sbtn" data-action="disconnect" data-needs="live" title="선택한 연결 닫기" aria-label="연결 닫기" disabled>{{icon "tb-disconnect"}}</button>
       <button class="sbtn" data-action="refresh" title="연결 트리 새로고침 (F5)" aria-label="새로고침">{{icon "refresh"}}</button>
       <span class="sb-sep"></span>
-      <button class="sbtn" data-action="new-query" title="새 쿼리 (선택한 연결/데이터베이스)" aria-label="새 쿼리">{{icon "tb-newquery"}}</button>
-      <button class="sbtn" data-action="new-table" title="새 테이블 (선택한 데이터베이스)" aria-label="새 테이블">{{icon "tb-newtable"}}</button>
-      <button class="sbtn" data-action="objects" title="선택한 데이터베이스의 오브젝트 목록" aria-label="오브젝트 목록">{{icon "table"}}</button>
+      <button class="sbtn" data-action="new-query" data-needs="conn" title="새 쿼리 (선택한 연결/데이터베이스)" aria-label="새 쿼리" disabled>{{icon "tb-newquery"}}</button>
+      <button class="sbtn" data-action="new-table" data-needs="db" title="새 테이블 (선택한 데이터베이스)" aria-label="새 테이블" disabled>{{icon "tb-newtable"}}</button>
+      <button class="sbtn" data-action="objects" data-needs="db" title="선택한 데이터베이스의 오브젝트 목록" aria-label="오브젝트 목록" disabled>{{icon "tb-list"}}</button>
     </div>
     <div class="side-search">
-      {{icon "search"}}<input id="tree-filter" type="search" placeholder="연결·데이터베이스 검색" autocomplete="off" spellcheck="false">
+      {{icon "search"}}<input id="tree-filter" type="search" placeholder="펼친 트리에서 이름 검색" aria-label="트리 검색" autocomplete="off" spellcheck="false">
       <button type="button" class="ns-btn" id="nav-live" title="연결된 항목만 표시" aria-pressed="false">{{icon "filter"}}</button>
     </div>
-    <ul id="tree" class="tree" hx-get="/tree/conns" hx-trigger="load, conns-changed from:body" hx-swap="innerHTML"></ul>
+    <ul id="tree" class="tree" tabindex="0" role="tree" aria-label="연결 트리" hx-get="/tree/conns" hx-trigger="load, conns-changed from:body" hx-swap="innerHTML"></ul>
   </aside>
   <div id="resizer" role="separator" aria-orientation="vertical"></div>
   <section id="work">
@@ -78,11 +78,11 @@
     <div id="panels">
       <div id="welcome">
         <div class="welcome-card">
-          <div class="logo"><img src="/static/dbcat.svg" alt="" width="88" height="88"></div>
-          <h1>DBCat</h1>
+          <div class="logo"><img src="/static/joinery.svg" alt="" width="88" height="88"></div>
+          <h1>Joinery</h1>
           <p>SQLite · PostgreSQL · MySQL / MariaDB</p>
           <button class="btn primary" hx-get="/conn/new" hx-target="#modal" hx-swap="innerHTML">새 연결 만들기</button>
-          <p class="muted">왼쪽 트리에서 연결을 더블클릭하면 열립니다. 우클릭으로 메뉴를 사용하세요.<br><kbd class="cmdk-hint">⌘K</kbd> 로 모든 명령을 검색할 수 있습니다.</p>
+          <p class="muted">왼쪽 트리에서 연결을 더블클릭하면 열립니다. 우클릭으로 메뉴를 사용하세요.<br><kbd class="cmdk-hint">⌘K</kbd> 로 명령 · 테이블 · 열린 탭을 검색할 수 있습니다.</p>
         </div>
       </div>
     </div>
@@ -92,7 +92,7 @@
 <footer id="statusbar"><span id="st-left">준비</span><span id="st-right"></span></footer>
 
 <div id="modal"></div>
-<div id="toasts" aria-live="polite"></div>
+<div id="toasts" role="region" aria-label="알림"></div>
 <div id="ctxmenu" class="ctxmenu" hidden></div>
 <div id="palette" hidden></div>
 </body>
