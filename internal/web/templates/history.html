@@ -1,0 +1,36 @@
+{{define "history-list"}}{{range .Items}}
+<div class="hist-item{{if not .OK}} bad{{end}}" data-id="{{.ID}}">
+  <div class="hist-meta">
+    <span class="hist-ok" title="{{if .OK}}성공{{else}}오류{{end}}">{{if .OK}}✓{{else}}✕{{end}}</span>
+    {{fmtTime .At}} · {{.ConnName}}{{if .Where}} · {{.Where}}{{end}} · {{.Ms}}ms
+  </div>
+  <pre class="hist-sql" data-act="hist-insert" data-id="{{.ID}}" title="클릭하면 편집기로 가져옵니다">{{.Preview}}</pre>
+  <div class="hist-actions">
+    <button type="button" class="tbtn" data-act="hist-insert" data-id="{{.ID}}">{{icon "query"}}가져오기</button>
+    <button type="button" class="tbtn" hx-post="/history/delete" hx-vals='{"id":"{{.ID}}"}' hx-target="closest .hist-item" hx-swap="outerHTML">{{icon "trash"}}삭제</button>
+  </div>
+</div>
+{{else}}<div class="empty">기록이 없습니다.</div>{{end}}{{end}}
+
+{{define "history"}}
+<div class="overlay" data-overlay>
+  <div class="dialog hist" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+    <div class="dlg-title" id="hist-title">쿼리 기록</div>
+    <form class="hist-bar" hx-get="/history/list" hx-target="#hist-list" hx-swap="innerHTML" hx-trigger="input changed delay:250ms, change" autocomplete="off">
+      <select name="scope" aria-label="범위">
+        {{if .Conn}}<option value="{{.Conn}}" selected>이 연결</option>{{end}}
+        <option value=""{{if not .Conn}} selected{{end}}>모든 연결</option>
+      </select>
+      <input type="search" name="q" placeholder="SQL 검색" spellcheck="false" aria-label="SQL 검색">
+    </form>
+    <div id="hist-list" class="hist-list">{{template "history-list" .}}</div>
+    <div class="dlg-foot hist-foot">
+      <label class="check"><input type="checkbox" name="on" value="1" hx-post="/history/enable" hx-trigger="change" hx-swap="none"{{if .Enabled}} checked{{end}}> 실행한 쿼리 기록하기</label>
+      <span class="conn-msg"></span>
+      <button type="button" class="btn" hx-post="/history/clear" hx-include=".hist-bar select" hx-target="#hist-list" hx-swap="innerHTML"
+              data-confirm-msg="선택한 범위의 쿼리 기록을 모두 삭제할까요?" data-confirm-ok="삭제">모두 삭제</button>
+      <button type="button" class="btn" data-action="close-modal">닫기</button>
+    </div>
+  </div>
+</div>
+{{end}}
