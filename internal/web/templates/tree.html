@@ -1,0 +1,62 @@
+{{define "tree-conns"}}{{range .}}
+<li class="node" data-live="{{if .Live}}1{{end}}">
+  <div class="row" data-node="conn" data-c="{{.ID}}" data-name="{{.Name}}" data-kind="{{.Kind}}"
+       data-summary="{{.Summary}}" data-live="{{if .Live}}1{{end}}" data-children="/tree/dbs?c={{.ID}}">
+    <i class="tw"></i><span class="ico ico-{{.Kind}}">{{icon (kindIco .Kind)}}</span><span class="lbl">{{.Name}}</span>{{if .Live}}<span class="live" title="연결됨"></span>{{end}}
+  </div>
+  <ul class="kids"></ul>
+</li>
+{{else}}
+<li class="tree-empty">저장된 연결이 없습니다.<br>위의 <b>새 연결</b> 버튼으로 추가하세요.</li>
+{{end}}{{end}}
+
+{{define "tree-items"}}{{range .}}
+<li class="node">
+  <div class="row" data-node="{{.Kind}}" data-c="{{.Conn}}" data-d="{{.DB}}" data-s="{{.Schema}}" data-name="{{.Name}}"
+       data-children="{{.Children}}" data-objects="/objects?{{.Query}}">
+    <i class="tw"></i><span class="ico ico-{{.Kind}}">{{if eq .Kind "schema"}}{{icon "schema"}}{{else}}{{icon "db"}}{{end}}</span><span class="lbl">{{.Name}}</span>
+  </div>
+  <ul class="kids"></ul>
+</li>
+{{end}}{{end}}
+
+{{define "tree-groups"}}{{$g := .}}
+<li class="node open">
+  <div class="row" data-node="group" data-c="{{$g.Conn}}" data-d="{{$g.DB}}" data-s="{{$g.Schema}}" data-objects="/objects?{{$g.Query}}">
+    <i class="tw"></i><span class="ico ico-group">{{icon "folder-table"}}</span><span class="lbl">테이블</span><span class="cnt">{{len .Tables}}</span>
+  </div>
+  <ul class="kids">{{range .Tables}}
+    <li class="node leaf">
+      <div class="row" data-node="table" data-c="{{$g.Conn}}" data-d="{{$g.DB}}" data-s="{{$g.Schema}}" data-t="{{.Name}}" data-view="">
+        <i class="tw"></i><span class="ico ico-table">{{icon "table"}}</span><span class="lbl">{{.Name}}</span>
+      </div>
+    </li>{{end}}
+  </ul>
+</li>
+{{if .Views}}
+<li class="node">
+  <div class="row" data-node="group" data-c="{{$g.Conn}}" data-d="{{$g.DB}}" data-s="{{$g.Schema}}" data-objects="/objects?{{$g.Query}}">
+    <i class="tw"></i><span class="ico ico-group">{{icon "folder-view"}}</span><span class="lbl">뷰</span><span class="cnt">{{len .Views}}</span>
+  </div>
+  <ul class="kids">{{range .Views}}
+    <li class="node leaf">
+      <div class="row" data-node="table" data-c="{{$g.Conn}}" data-d="{{$g.DB}}" data-s="{{$g.Schema}}" data-t="{{.Name}}" data-view="1">
+        <i class="tw"></i><span class="ico ico-view">{{icon "view"}}</span><span class="lbl">{{.Name}}</span>
+      </div>
+    </li>{{end}}
+  </ul>
+</li>
+{{end}}
+{{range $cat := slice "indexes" "triggers" "routines"}}
+{{if or (ne $cat "routines") $g.HasRoutines}}
+<li class="node">
+  <div class="row" data-node="group" data-cat="{{$cat}}" data-c="{{$g.Conn}}" data-d="{{$g.DB}}" data-s="{{$g.Schema}}" data-objects="/objects?{{$g.Query}}" data-children="/tree/cat?{{$g.Query}}&amp;cat={{$cat}}">
+    <i class="tw"></i><span class="ico ico-group">{{if eq $cat "indexes"}}{{icon "folder-index"}}{{else if eq $cat "triggers"}}{{icon "folder-trigger"}}{{else}}{{icon "folder-func"}}{{end}}</span><span class="lbl">{{if eq $cat "indexes"}}인덱스{{else if eq $cat "triggers"}}트리거{{else}}함수{{end}}</span><span class="cnt"></span>
+  </div>
+  <ul class="kids"></ul>
+</li>
+{{end}}
+{{end}}
+{{end}}
+
+{{define "tree-error"}}<li class="tree-error">{{.Err}}{{template "trust-btn" .Trust}}</li>{{end}}

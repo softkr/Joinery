@@ -1,0 +1,265 @@
+{{define "cell"}}{{if .Null}}<span class="null">NULL</span>{{else}}{{.V}}{{end}}{{end}}
+
+{{/* ---- objects list ---- */}}
+{{define "objects"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+<div class="objects-panel" data-c="{{.Ref.Conn}}" data-d="{{.Ref.DB}}" data-s="{{.Ref.Schema}}" data-mode="details" data-cat="tables">
+  <div class="obj-head">
+    <span class="obj-title"><span class="ico">{{icon "db"}}</span><b>{{if .Ref.Schema}}{{.Ref.Schema}}{{else}}{{.Ref.DB}}{{end}}</b><span class="dim"> › 테이블 · 뷰 {{len .Tables}}개</span></span>
+    <span class="obj-actions">
+      <span class="seg" role="group" aria-label="보기 모드">
+        <button type="button" class="seg-btn" data-mode="list" title="목록 보기">{{icon "tb-list"}}</button>
+        <button type="button" class="seg-btn active" data-mode="details" title="자세히 보기">{{icon "tb-details"}}</button>
+        <button type="button" class="seg-btn" data-mode="tiles" title="아이콘 보기">{{icon "tb-tiles"}}</button>
+        <button type="button" class="seg-btn" data-mode="er" title="ER 다이어그램 보기">{{icon "tb-er"}}</button>
+      </span>
+      <label class="obj-filter">{{icon "search"}}<input type="search" placeholder="이름 필터" spellcheck="false" autocomplete="off" aria-label="이름 필터"></label>
+    </span>
+  </div>
+  <div class="subbar">
+    <button class="tbtn only-tables" data-act="open-selected">{{icon "open"}}테이블 열기</button>
+    <button class="tbtn only-tables" data-act="design-selected">{{icon "design"}}테이블 설계</button>
+    <button class="tbtn only-tables" data-act="new-table">{{icon "plus"}}새 테이블</button>
+    <button class="tbtn only-other" data-act="def-selected">{{icon "query"}}정의 보기</button>
+    <button class="tbtn" data-act="query-here">{{icon "query"}}새 쿼리</button>
+    <button class="tbtn" data-act="backup" title="테이블 구조·데이터를 SQL 파일로 저장">{{icon "download"}}백업</button>
+    <button class="tbtn" data-act="restore" title="SQL 파일을 이 데이터베이스에 실행">{{icon "open"}}SQL 실행</button>
+  </div>
+  <div class="obj-body" data-cat="tables">
+    <div class="obj-pane" data-pane="details">
+      <div class="gridwrap">
+        <table class="grid objects">
+          <thead><tr><th>이름</th><th class="num">행 수</th><th>유형</th><th>설명</th></tr></thead>
+          <tbody>
+          {{range .Tables}}
+            <tr class="orow" data-t="{{.Name}}" data-view="{{if .IsView}}1{{end}}">
+              <td><span class="ico">{{if .IsView}}{{icon "view"}}{{else}}{{icon "table"}}{{end}}</span>{{.Name}}</td>
+              <td class="num">{{if and $.Estimated (ge .Rows 0)}}~{{end}}{{rows .Rows}}</td>
+              <td>{{if .IsView}}뷰{{else}}테이블{{end}}</td>
+              <td class="dim">{{.Comment}}</td>
+            </tr>
+          {{else}}
+            <tr><td colspan="4" class="empty-row">오브젝트가 없습니다.</td></tr>
+          {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="obj-pane" data-pane="list" hidden>
+      <div class="obj-list">
+      {{range .Tables}}
+        <div class="orow-l" data-t="{{.Name}}" data-view="{{if .IsView}}1{{end}}">
+          <span class="ico">{{if .IsView}}{{icon "view"}}{{else}}{{icon "table"}}{{end}}</span><span class="nm">{{.Name}}</span>
+          {{if not .IsView}}<span class="list-badge">{{if and $.Estimated (ge .Rows 0)}}~{{end}}{{rows .Rows}}행</span>{{end}}
+        </div>
+      {{else}}<div class="empty-row">오브젝트가 없습니다.</div>{{end}}
+      </div>
+    </div>
+    <div class="obj-pane" data-pane="tiles" hidden>
+      <div class="obj-tiles">
+      {{range .Tables}}
+        <div class="otile" data-t="{{.Name}}" data-view="{{if .IsView}}1{{end}}" title="{{.Name}}">
+          {{if .IsView}}{{icon "view"}}{{else}}{{icon "table"}}{{end}}
+          <span class="nm">{{.Name}}</span>
+          {{if not .IsView}}<span class="sub">{{if and $.Estimated (ge .Rows 0)}}~{{end}}{{rows .Rows}}행</span>{{end}}
+        </div>
+      {{else}}<div class="empty-row">오브젝트가 없습니다.</div>{{end}}
+      </div>
+    </div>
+    <div class="obj-pane" data-pane="er" hidden><div class="er-host"><div class="empty">불러오는 중…</div></div></div>
+  </div>
+  <div class="info-pane">
+    <div class="info-head">
+      <button type="button" class="info-tab active" data-info="general">{{icon "info"}}일반</button>
+      <button type="button" class="info-tab" data-info="ddl">{{icon "query"}}DDL</button>
+      <span class="sp"></span>
+      <button type="button" class="info-toggle" title="접기 / 펼치기">{{icon "chev-down"}}</button>
+    </div>
+    <div class="info-body"><div class="empty">오브젝트를 선택하면 정보가 표시됩니다.</div></div>
+  </div>
+  <div class="cat-tabs" role="tablist">
+    <button type="button" class="cat-tab active" data-cat="tables">{{icon "table"}}테이블 · 뷰</button>
+    <button type="button" class="cat-tab" data-cat="indexes">{{icon "index"}}인덱스</button>
+    <button type="button" class="cat-tab" data-cat="triggers">{{icon "trigger"}}트리거</button>
+    {{if .HasRoutines}}<button type="button" class="cat-tab" data-cat="routines">{{icon "func"}}함수</button>{{end}}
+  </div>
+</div>
+{{end}}{{end}}
+
+{{/* ---- table data grid ---- */}}
+{{define "data"}}
+<form class="dataform" data-c="{{.Conn}}" data-d="{{.DB}}" data-s="{{.Schema}}" data-t="{{.Table}}" hx-target="closest .panel" hx-swap="innerHTML">
+  <input type="hidden" name="c" value="{{.Conn}}">
+  <input type="hidden" name="d" value="{{.DB}}">
+  <input type="hidden" name="s" value="{{.Schema}}">
+  <input type="hidden" name="t" value="{{.Table}}">
+  <input type="hidden" name="v" value="{{if .IsView}}1{{end}}">
+  <input type="hidden" name="sort" value="{{.Sort}}">
+  <input type="hidden" name="desc" value="{{if .Desc}}1{{end}}">
+  <input type="hidden" name="page" value="{{.Page}}">
+
+  <div class="subbar">
+    <button type="button" class="tbtn" title="새로고침" hx-get="/table/data" hx-include="closest form">{{icon "refresh"}}새로고침</button>
+    {{if and .Cols (not .IsView)}}
+    <button type="button" class="tbtn" title="행 추가" hx-get="/table/insert" hx-include="closest form" hx-target="#modal" hx-swap="innerHTML">{{icon "plus"}}행 추가</button>
+    {{end}}
+    {{if .Editable}}
+    <button type="button" class="tbtn" data-act="delete-row" title="선택한 행 삭제">{{icon "trash"}}행 삭제</button>
+    {{end}}
+    {{if .Rows}}<button type="button" class="tbtn" data-act="form-view" title="선택한 행을 폼으로 보기 (이전/다음 이동)">{{icon "tb-form"}}폼 보기</button>{{end}}
+    {{if .Cols}}
+    <span class="sep"></span>
+    <button type="button" class="tbtn" data-act="export" data-fmt="csv" title="현재 필터·정렬 기준 전체 행을 CSV로 저장">{{icon "download"}}CSV</button>
+    <button type="button" class="tbtn" data-act="export" data-fmt="json" title="현재 필터·정렬 기준 전체 행을 JSON으로 저장">{{icon "download"}}JSON</button>
+    {{end}}
+    <span class="sep"></span>
+    <label class="filter">{{icon "filter"}}
+      <input type="text" name="where" value="{{.Where}}" spellcheck="false" autocomplete="off"
+             placeholder="WHERE 조건 입력 후 Enter (예: id &gt; 10 AND name LIKE 'a%')"
+             hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}' hx-trigger="keydown[key=='Enter']">
+    </label>
+    <button type="button" class="tbtn" hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}'>적용</button>
+    {{if .Editable}}<span class="tip">셀을 더블클릭해 편집 · Enter 저장 · Esc 취소 · ⌘/Ctrl+0 = NULL</span>
+    {{else if .Cols}}<span class="tip">{{if .IsView}}뷰는 읽기 전용입니다{{else}}기본키가 없어 읽기 전용입니다{{end}}</span>{{end}}
+  </div>
+
+  {{if .Err}}<div class="errbar">{{.Err}}</div>{{end}}
+
+  <div class="gridwrap">
+    <table class="grid resizable{{if .Editable}} editable{{end}}">
+      <thead><tr>
+        <th class="rn"></th>
+        {{$v := .}}
+        {{range .Cols}}
+        <th class="sortable" data-col="{{.Name}}" title="{{.Type}}{{if .PK}} · PRIMARY KEY{{end}}"
+            hx-get="/table/data" hx-include="closest form"
+            {{if and (eq $v.Sort .Name) (not $v.Desc)}}hx-vals='{"sort":{{json .Name}},"desc":"1","page":1}'
+            {{else if and (eq $v.Sort .Name) $v.Desc}}hx-vals='{"sort":"","desc":"","page":1}'
+            {{else}}hx-vals='{"sort":{{json .Name}},"desc":"","page":1}'{{end}}>
+          {{if .PK}}<span class="pk">{{icon "key"}}</span>{{end}}{{.Name}}
+          {{if eq $v.Sort .Name}}<span class="sortmark">{{if $v.Desc}}▼{{else}}▲{{end}}</span>{{end}}
+        </th>
+        {{end}}
+      </tr></thead>
+      <tbody>
+      {{range $i, $row := .Rows}}
+        <tr data-pk="{{$v.PK $row}}">
+          <td class="rn">{{add $i $v.From}}</td>
+          {{range $j, $cell := $row}}<td data-col="{{(index $v.Cols $j).Name}}">{{template "cell" $cell}}</td>{{end}}
+        </tr>
+      {{else}}
+        {{if not .Err}}<tr><td class="empty-row" colspan="{{add (len .Cols) 1}}">데이터가 없습니다.</td></tr>{{end}}
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pbar">
+    <div class="pager">
+      <button type="button" class="pbtn" title="첫 페이지" {{if le .Page 1}}disabled{{end}}
+              hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}'>{{icon "first"}}</button>
+      <button type="button" class="pbtn" title="이전 페이지" {{if le .Page 1}}disabled{{end}}
+              hx-get="/table/data" hx-include="closest form" hx-vals='{"page":{{add .Page -1}}}'>{{icon "prev"}}</button>
+      <span class="pgno">{{.Page}} 페이지</span>
+      <button type="button" class="pbtn" title="다음 페이지" {{if not .More}}disabled{{end}}
+              hx-get="/table/data" hx-include="closest form" hx-vals='{"page":{{add .Page 1}}}'>{{icon "next"}}</button>
+      <select name="size" title="페이지당 행 수" hx-get="/table/data" hx-include="closest form" hx-vals='{"page":1}' hx-trigger="change">
+        {{range .Sizes}}<option value="{{.}}"{{if eq . $v.Size}} selected{{end}}>{{.}}행</option>{{end}}
+      </select>
+    </div>
+    <span class="rowinfo">{{if .Rows}}{{.From}}–{{.To}}행{{else}}0행{{end}}
+      · <span class="total" hx-get="/table/count" hx-include="closest form" hx-trigger="load" hx-swap="innerHTML" hx-target="this">…</span></span>
+    <span class="sqlbar" title="{{.SQL}}">{{.SQL}}</span>
+  </div>
+</form>
+{{end}}
+
+{{/* ---- table design (read only) ---- */}}
+{{define "design"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+<div class="design-panel">
+  <div class="subbar">
+    <button class="tbtn active" data-sub="fields">필드</button>
+    <button class="tbtn" data-sub="indexes">인덱스</button>
+    <span class="tip">읽기 전용</span>
+  </div>
+  <div class="gridwrap sub" data-subpane="fields">
+    <table class="grid">
+      <thead><tr><th>이름</th><th>유형</th><th>Null 허용</th><th>키</th><th>기본값</th><th>추가</th><th>설명</th></tr></thead>
+      <tbody>{{range .Cols}}
+        <tr>
+          <td>{{.Name}}</td><td>{{.Type}}</td>
+          <td class="center">{{if .Nullable}}✓{{end}}</td>
+          <td class="center">{{if .PK}}<span class="pk">{{icon "key"}}</span>{{end}}</td>
+          <td>{{.Default}}</td><td>{{.Extra}}</td><td class="dim">{{.Comment}}</td>
+        </tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="gridwrap sub" data-subpane="indexes" hidden>
+    <table class="grid">
+      <thead><tr><th>이름</th><th>필드</th><th>고유</th><th>기본키</th></tr></thead>
+      <tbody>{{range .Indexes}}
+        <tr><td>{{.Name}}</td><td>{{.Columns}}</td><td class="center">{{if .Unique}}✓{{end}}</td><td class="center">{{if .Primary}}✓{{end}}</td></tr>
+      {{else}}<tr><td colspan="4" class="empty-row">인덱스가 없습니다.</td></tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}{{end}}
+
+{{/* ---- query editor ---- */}}
+{{define "query"}}
+<div class="query-panel">
+  <form class="qform" data-kind="{{.Kind}}" hx-post="/query/run" hx-target="next .qresult" hx-swap="innerHTML" hx-disabled-elt="find .run">
+    <input type="hidden" name="c" value="{{.Ref.Conn}}">
+    <input type="hidden" name="d" value="{{.Ref.DB}}">
+    <input type="hidden" name="s" value="{{.Ref.Schema}}">
+    <div class="subbar">
+      <button type="submit" class="tbtn primary run">{{icon "play"}}실행</button>
+      <button type="button" class="tbtn" data-act="format-sql" title="SQL 포맷 (선택 영역 또는 전체) · Alt+Shift+F">{{icon "format"}}포맷</button>
+      {{if .HistoryOn}}<button type="button" class="tbtn" title="실행한 쿼리 기록" hx-get="/history" hx-vals='{"c":"{{.Ref.Conn}}"}' hx-target="#modal" hx-swap="innerHTML">{{icon "clock"}}기록</button>{{end}}
+      <span class="qctx">{{.ConnName}} <span class="dim">›</span> {{.Label}}</span>
+      <span class="tip">⌘/Ctrl+Enter 실행 · 선택한 텍스트만 실행 · 여러 문장은 ; 로 구분 (오류 시 중단)</span>
+    </div>
+    <textarea name="sql" class="editor" spellcheck="false" autocomplete="off" autocapitalize="off"
+              placeholder="SELECT * FROM ..."></textarea>
+  </form>
+  <div class="qresult"><div class="empty">쿼리를 실행하면 결과가 여기에 표시됩니다.</div></div>
+</div>
+{{end}}
+
+{{/* one statement's outcome: error, result grid, or "OK" line */}}
+{{define "result-pane"}}
+{{if .Err}}<div class="errbar">{{.Err}}</div>
+{{else if .Res.IsQuery}}
+<div class="gridwrap">
+  <table class="grid resizable">
+    <thead><tr><th class="rn"></th>{{range .Res.Columns}}<th data-col="{{.}}">{{.}}</th>{{end}}</tr></thead>
+    <tbody>{{range $i, $row := .Res.Rows}}
+      <tr><td class="rn">{{add $i 1}}</td>{{range $row}}<td>{{template "cell" .}}</td>{{end}}</tr>
+    {{else}}<tr><td class="empty-row" colspan="{{add (len .Res.Columns) 1}}">결과가 없습니다.</td></tr>{{end}}</tbody>
+  </table>
+</div>
+<div class="pbar"><span>{{len .Res.Rows}}행{{if .Res.More}} (처음 {{.Limit}}행만 표시){{end}} · {{.Elapsed}}초</span>
+  <span class="sqlbar"></span>
+  <button type="button" class="tbtn" data-act="export-result" data-fmt="csv" title="표시된 행을 CSV로 저장">{{icon "download"}}CSV</button>
+  <button type="button" class="tbtn" data-act="export-result" data-fmt="json" title="표시된 행을 JSON으로 저장">{{icon "download"}}JSON</button></div>
+{{else}}
+<div class="okbar">쿼리 성공 · 영향받은 행 {{.Res.Affected}} · {{.Elapsed}}초</div>
+{{end}}
+{{end}}
+
+{{define "result"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+{{$top := .}}
+{{if .Multi}}
+<div class="rtabs" role="tablist">
+  {{range .Items}}<button type="button" role="tab" class="rtab{{if .Err}} bad{{end}}{{if eq (add .N -1) $top.Active}} active{{end}}" data-rtab="{{.N}}" title="{{.SQL}}">{{.Label}}</button>{{end}}
+  <span class="rsum">{{len .Items}}개 문 · {{.Total}}초{{if .Skipped}} · <b>{{.Skipped}}개는 오류로 실행되지 않음</b>{{end}}</span>
+</div>
+{{end}}
+{{range .Items}}
+<div class="rpane"{{if $top.Multi}} data-rpane="{{.N}}"{{if ne (add .N -1) $top.Active}} hidden{{end}}{{end}}>
+  {{if $top.Multi}}<div class="rsql" title="{{.SQL}}">{{.SQL}}</div>{{end}}
+  {{template "result-pane" (resultView . $top.Limit)}}
+</div>
+{{end}}
+{{end}}{{end}}

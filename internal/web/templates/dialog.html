@@ -1,0 +1,91 @@
+{{define "trust-btn"}}{{with .}}<button type="button" class="btn trust" data-action="trust-host" data-host="{{.Host}}" data-key="{{.Key}}" data-fp="{{.Fingerprint}}">지문 확인 후 호스트 키 등록…</button>{{end}}{{end}}
+
+{{define "conn-test"}}{{if .OK}}<span class="ok">✓ 연결에 성공했습니다</span>{{else}}<span class="bad">{{.Err}}</span>{{template "trust-btn" .Trust}}{{end}}{{end}}
+
+{{define "conn-dialog"}}
+<div class="overlay" data-overlay>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div class="dlg-title" id="dlg-title">{{if .Editing}}연결 편집{{else}}새 연결{{end}}</div>
+    <div class="dlg-tabs"><span class="active">일반</span></div>
+    <form id="connform" class="conn-form" data-kind="{{.Kind}}" data-ssh="{{if .SSHOn}}1{{end}}" hx-post="/conn/save" hx-target="#conn-msg" hx-swap="innerHTML" autocomplete="off">
+      <input type="hidden" name="id" value="{{.ID}}">
+
+      <label class="fld"><span>연결 유형</span>
+        <select name="kind" id="conn-kind">
+          {{range .Kinds}}<option value="{{.}}"{{if eq . $.Kind}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </label>
+      <label class="fld"><span>연결 이름</span>
+        <input name="name" value="{{.Name}}" required maxlength="80" placeholder="예: 로컬 개발 DB">
+      </label>
+
+      <label class="fld net"><span>호스트</span>
+        <input name="host" value="{{.Host}}" placeholder="localhost" spellcheck="false">
+      </label>
+      <label class="fld net"><span>포트</span>
+        <input name="port" id="conn-port" value="{{.PortText}}" inputmode="numeric" pattern="[0-9]*" placeholder="자동" class="short">
+      </label>
+      <label class="fld net"><span>사용자 이름</span>
+        <input name="user" value="{{.User}}" spellcheck="false" autocomplete="off">
+      </label>
+      <label class="fld net"><span>비밀번호</span>
+        <input name="password" type="password" autocomplete="new-password"
+               placeholder="{{if .HasPass}}변경하지 않으려면 비워 두세요{{end}}">
+      </label>
+      <label class="fld net"><span>데이터베이스</span>
+        <input name="database" value="{{if ne .Kind "sqlite"}}{{.Database}}{{end}}" spellcheck="false" placeholder="선택 사항 (PostgreSQL 기본: postgres)" {{if eq .Kind "sqlite"}}disabled{{end}}>
+      </label>
+
+      <label class="fld net"><span>SSL / TLS</span>
+        <select name="ssl_mode" aria-label="SSL 모드">
+          <option value=""{{if eq .SSLMode ""}} selected{{end}}>가능하면 사용</option>
+          <option value="disable"{{if eq .SSLMode "disable"}} selected{{end}}>사용 안 함</option>
+          <option value="require"{{if eq .SSLMode "require"}} selected{{end}}>필수 (인증서 검증 안 함)</option>
+          <option value="verify"{{if eq .SSLMode "verify"}} selected{{end}}>필수 + 인증서 검증</option>
+        </select>
+      </label>
+      <label class="fld net"><span>CA 인증서</span>
+        <input name="ssl_ca" value="{{.SSLCA}}" spellcheck="false" placeholder="선택 사항: PEM 파일 경로 (검증 모드에서 사용)">
+      </label>
+
+      <label class="fld net sshtoggle"><span>SSH 터널</span>
+        <span class="check"><input type="checkbox" name="ssh_on" id="ssh-on"{{if .SSHOn}} checked{{end}}> SSH 서버를 거쳐 연결</span>
+      </label>
+      <label class="fld net sshf"><span>SSH 호스트</span>
+        <input name="ssh_host" value="{{.SSH.Host}}" spellcheck="false" placeholder="bastion.example.com">
+      </label>
+      <label class="fld net sshf"><span>SSH 포트</span>
+        <input name="ssh_port" value="{{.SSHPortText}}" inputmode="numeric" pattern="[0-9]*" placeholder="22" class="short">
+      </label>
+      <label class="fld net sshf"><span>SSH 사용자</span>
+        <input name="ssh_user" value="{{.SSH.User}}" spellcheck="false" autocomplete="off">
+      </label>
+      <label class="fld net sshf"><span>개인키 파일</span>
+        <span class="filerow">
+          <input name="ssh_key" value="{{.SSH.KeyFile}}" spellcheck="false" placeholder="비우면 비밀번호로 인증 (예: ~/.ssh/id_ed25519)">
+          <button type="button" class="btn" data-action="pick-file" data-target="ssh_key" hidden>찾아보기…</button>
+        </span>
+      </label>
+      <label class="fld net sshf"><span>SSH 비밀번호</span>
+        <input name="ssh_password" type="password" autocomplete="new-password"
+               placeholder="{{if .HasSSHPass}}변경하지 않으려면 비워 두세요{{else}}개인키를 쓰면 키 암호{{end}}">
+      </label>
+      <p class="hint net sshf">호스트 키는 <code>~/.ssh/known_hosts</code> 로 검증합니다. 등록되지 않은 호스트는 지문을 보여 주고 거부합니다.</p>
+
+      <label class="fld file"><span>데이터베이스 파일</span>
+        <span class="filerow">
+          <input name="database" value="{{if eq .Kind "sqlite"}}{{.Database}}{{end}}" spellcheck="false" placeholder="/path/to/data.db" {{if ne .Kind "sqlite"}}disabled{{end}}>
+          <button type="button" class="btn" data-action="pick-file" data-target="database" hidden>찾아보기…</button>
+        </span>
+      </label>
+
+      <div class="dlg-foot">
+        <span id="conn-msg" class="conn-msg" aria-live="polite"></span>
+        <button type="button" class="btn" hx-post="/conn/test" hx-include="#connform" hx-target="#conn-msg" hx-swap="innerHTML">연결 테스트</button>
+        <button type="button" class="btn" data-action="close-modal">취소</button>
+        <button type="submit" class="btn primary">확인</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}

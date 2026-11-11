@@ -1,0 +1,62 @@
+{{/* ---- backup (dump) dialog ---- */}}
+{{define "backup-dialog"}}
+<div class="overlay" data-overlay>
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="bk-title">
+    <div class="dlg-title" id="bk-title">백업 (SQL 덤프) — {{if .Schema}}{{.Schema}}{{else}}{{.DB}}{{end}}</div>
+    {{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+    <form class="bk-form" data-backup data-c="{{.Conn}}" data-d="{{.DB}}" data-s="{{.Schema}}" autocomplete="off">
+      <div class="bk-list-head">
+        <b>테이블 {{len .Tables}}개</b>
+        <span class="bk-links"><button type="button" class="link" data-bk="all">전체 선택</button> · <button type="button" class="link" data-bk="none">전체 해제</button></span>
+      </div>
+      <div class="bk-list">
+        {{range .Tables}}<label class="bk-item"><input type="checkbox" name="t" value="{{.}}" checked><span>{{.}}</span></label>{{else}}<div class="empty">테이블이 없습니다.</div>{{end}}
+      </div>
+      <fieldset class="bk-opts">
+        <label><input type="checkbox" name="struct" value="1" checked> 구조 (CREATE TABLE · 인덱스 · 외래 키)</label>
+        <label><input type="checkbox" name="data" value="1" checked> 데이터 (INSERT)</label>
+        <label><input type="checkbox" name="drop" value="1"> 기존 테이블 삭제 문 포함 (DROP … IF EXISTS)</label>
+        <label><input type="checkbox" name="views" value="1" checked> 뷰 포함{{if .Views}} ({{.Views}}개){{end}}</label>
+        <label><input type="checkbox" name="objs" value="1" checked> 트리거 · 함수 · 프로시저 포함</label>
+      </fieldset>
+      <div class="dlg-foot">
+        <span class="conn-msg dim">선택한 항목이 .sql 파일로 저장됩니다.</span>
+        <button type="button" class="btn" data-action="close-modal">취소</button>
+        <button type="submit" class="btn primary">{{icon "download"}} 백업 저장</button>
+      </div>
+    </form>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{/* ---- restore (run SQL file) dialog ---- */}}
+{{define "restore-dialog"}}
+<div class="overlay" data-overlay>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+    <div class="dlg-title" id="rs-title">SQL 파일 실행 (복원)</div>
+    <form class="rs-form" hx-post="/backup/restore" hx-encoding="multipart/form-data" hx-target="find .rs-result" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]" hx-indicator="find .rs-busy" data-confirm-msg="선택한 SQL 파일의 모든 문장을 {{.Target}} 에 실행합니다.&#10;DROP·DELETE 등이 포함되어 있으면 기존 데이터가 사라질 수 있습니다. 계속할까요?" data-confirm-ok="실행" autocomplete="off">
+      <input type="hidden" name="c" value="{{.Ref.Conn}}">
+      <input type="hidden" name="d" value="{{.Ref.DB}}">
+      <input type="hidden" name="s" value="{{.Ref.Schema}}">
+      <p class="dim">대상: <b>{{.Target}}</b></p>
+      <div class="field"><label for="rs-file">SQL 파일 (최대 256MB)</label>
+        <input id="rs-file" type="file" name="file" accept=".sql,.txt,text/plain,application/sql" required></div>
+      <label class="rs-opt"><input type="checkbox" name="cont" value="1"> 오류가 나도 계속 실행</label>
+      <div class="rs-result" aria-live="polite"></div>
+      <div class="dlg-foot">
+        <span class="rs-busy htmx-indicator dim">실행 중…</span>
+        <button type="button" class="btn" data-action="close-modal">닫기</button>
+        <button type="submit" class="btn primary">실행</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{define "restore-result"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}{{with .Summary}}
+<div class="rs-sum {{if $.OK}}ok{{else}}bad{{end}}">
+  <b>{{if $.OK}}✓ 완료{{else if .Stopped}}중단됨{{else}}일부 실패{{end}}</b>
+  — {{$.File}} · 실행 {{.Statements}}문{{if .Failed}} (실패 {{.Failed}}){{end}} / 전체 {{.Total}}문 · {{$.Elapsed}}초
+  {{if .Errors}}<ul class="rs-errs">{{range .Errors}}<li>{{.}}</li>{{end}}</ul>{{end}}
+</div>{{end}}{{end}}{{end}}

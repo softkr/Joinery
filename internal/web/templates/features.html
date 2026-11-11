@@ -1,0 +1,174 @@
+{{/* ---- insert row dialog ---- */}}
+{{define "insert-dialog"}}
+<div class="overlay" data-overlay>
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="ins-title">
+    <div class="dlg-title" id="ins-title">행 추가{{if .Table}} — {{.Table}}{{end}}</div>
+    {{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+    <form class="ins-form" hx-post="/table/insert" hx-target="find .conn-msg" hx-swap="innerHTML" autocomplete="off">
+      <input type="hidden" name="c" value="{{.Conn}}">
+      <input type="hidden" name="d" value="{{.DB}}">
+      <input type="hidden" name="s" value="{{.Schema}}">
+      <input type="hidden" name="t" value="{{.Table}}">
+      <input type="hidden" name="n" value="{{len .Fields}}">
+      <div class="ins-scroll">
+        {{range .Fields}}
+        <div class="ins-row">
+          <input type="hidden" name="col.{{.Idx}}" value="{{.Name}}">
+          <label class="ins-name" for="ins-v-{{.Idx}}">
+            <span class="ins-t">{{if .PK}}<span class="pk">{{icon "key"}}</span>{{end}}{{.Name}}{{if not .Nullable}}<span class="req" title="NOT NULL">*</span>{{end}}</span>
+            <small class="dim">{{.Type}}</small>
+          </label>
+          <select name="m.{{.Idx}}" class="ins-mode" aria-label="{{.Name}} 입력 방식">
+            <option value="v"{{if not .Auto}} selected{{end}}>값</option>
+            {{if .Nullable}}<option value="n">NULL</option>{{end}}
+            <option value="d"{{if .Auto}} selected{{end}}>기본값</option>
+          </select>
+          <input id="ins-v-{{.Idx}}" name="v.{{.Idx}}" class="ins-val" spellcheck="false"{{if .Auto}} disabled placeholder="{{if .Default}}{{.Default}}{{else}}자동{{end}}"{{end}}>
+        </div>
+        {{end}}
+      </div>
+      <div class="dlg-foot">
+        <span class="conn-msg" aria-live="polite"></span>
+        <button type="button" class="btn" data-action="close-modal">취소</button>
+        <button type="submit" class="btn primary">추가</button>
+      </div>
+    </form>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{/* ---- table designer ---- */}}
+{{define "field-row"}}
+<tr class="frow">
+  <td>
+    <input type="hidden" name="f.{{.I}}.orig" value="{{.Orig}}">
+    <input name="f.{{.I}}.name" value="{{.Name}}" spellcheck="false" aria-label="필드 이름" required>
+  </td>
+  <td><input name="f.{{.I}}.type" value="{{.Type}}" list="type-hints" spellcheck="false" aria-label="유형"{{if and .Orig (not .Alter)}} disabled{{end}}></td>
+  <td class="center"><input type="checkbox" name="f.{{.I}}.notnull" aria-label="NOT NULL"{{if .NotNull}} checked{{end}}{{if and .Orig (not .Alter)}} disabled{{end}}></td>
+  <td><input name="f.{{.I}}.default" value="{{.Default}}" spellcheck="false" placeholder="없음" aria-label="기본값"{{if and .Orig (not .Alter)}} disabled{{end}}></td>
+  <td class="center"><input type="checkbox" name="f.{{.I}}.pk" aria-label="기본키"{{if .PK}} checked{{end}}{{if not .NewTbl}} disabled{{end}}></td>
+  <td class="center">
+    {{if .Orig}}<input type="checkbox" name="f.{{.I}}.drop" aria-label="필드 삭제" title="삭제">
+    {{else}}<button type="button" class="rmbtn" data-act="rm-row" title="행 제거">{{icon "close"}}</button>{{end}}
+  </td>
+</tr>
+{{end}}
+
+{{define "index-row"}}
+<tr class="xrow">
+  <td>
+    <input type="hidden" name="x.{{.I}}.orig" value="{{.Orig}}">
+    {{if .Orig}}{{.Name}}{{if .Primary}} <span class="dim">(기본키)</span>{{end}}
+    {{else}}<input name="x.{{.I}}.name" spellcheck="false" placeholder="idx_name" aria-label="인덱스 이름">{{end}}
+  </td>
+  <td>{{if .Orig}}{{.Cols}}{{else}}<input name="x.{{.I}}.cols" spellcheck="false" placeholder="col1, col2" aria-label="인덱스 필드">{{end}}</td>
+  <td class="center">{{if .Orig}}{{if .Unique}}✓{{end}}{{else}}<input type="checkbox" name="x.{{.I}}.unique" aria-label="고유">{{end}}</td>
+  <td class="center">
+    {{if .Orig}}{{if not .Primary}}<input type="checkbox" name="x.{{.I}}.drop" aria-label="인덱스 삭제" title="삭제">{{end}}
+    {{else}}<button type="button" class="rmbtn" data-act="rm-row" title="행 제거">{{icon "close"}}</button>{{end}}
+  </td>
+</tr>
+{{end}}
+
+{{define "fk-row"}}
+<tr class="krow">
+  <td>
+    <input type="hidden" name="k.{{.I}}.orig" value="{{.Orig}}">
+    {{if .Existing}}<input type="hidden" name="k.{{.I}}.existing" value="1">
+      {{if .Name}}{{.Name}}{{else}}<span class="dim">(이름 없음)</span>{{end}}
+    {{else}}<input name="k.{{.I}}.name" spellcheck="false" placeholder="비우면 자동 생성" aria-label="외래 키 이름">{{end}}
+  </td>
+  <td>{{if .Existing}}{{.Cols}}{{else}}<input name="k.{{.I}}.cols" spellcheck="false" placeholder="col1, col2" aria-label="필드">{{end}}</td>
+  <td>{{if .Existing}}{{.RefTable}}{{else}}<input name="k.{{.I}}.rtable" list="fk-tables" spellcheck="false" placeholder="table 또는 schema.table" aria-label="참조 테이블">{{end}}</td>
+  <td>{{if .Existing}}{{if .RefCols}}{{.RefCols}}{{else}}<span class="dim">(기본키)</span>{{end}}{{else}}<input name="k.{{.I}}.rcols" spellcheck="false" placeholder="id" aria-label="참조 필드">{{end}}</td>
+  <td>{{if .Existing}}{{.OnDelete}}{{else}}<select name="k.{{.I}}.ondelete" aria-label="ON DELETE"><option value="">기본</option><option>NO ACTION</option><option>RESTRICT</option><option>CASCADE</option><option>SET NULL</option><option>SET DEFAULT</option></select>{{end}}</td>
+  <td>{{if .Existing}}{{.OnUpdate}}{{else}}<select name="k.{{.I}}.onupdate" aria-label="ON UPDATE"><option value="">기본</option><option>NO ACTION</option><option>RESTRICT</option><option>CASCADE</option><option>SET NULL</option><option>SET DEFAULT</option></select>{{end}}</td>
+  <td class="center">
+    {{if .Existing}}{{if .CanDrop}}<input type="checkbox" name="k.{{.I}}.drop" aria-label="외래 키 삭제" title="삭제">{{else}}<span class="dim">—</span>{{end}}
+    {{else}}<button type="button" class="rmbtn" data-act="rm-row" title="행 제거">{{icon "close"}}</button>{{end}}
+  </td>
+</tr>
+{{end}}
+
+{{define "designer"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+{{$v := .}}
+<form class="designform design-panel" hx-target="closest .panel" hx-swap="innerHTML" autocomplete="off"
+      data-c="{{.Conn}}" data-d="{{.DB}}" data-s="{{.Schema}}" data-t="{{.Table}}">
+  <input type="hidden" name="c" value="{{.Conn}}">
+  <input type="hidden" name="d" value="{{.DB}}">
+  <input type="hidden" name="s" value="{{.Schema}}">
+  <input type="hidden" name="mode" value="{{if .New}}new{{else}}edit{{end}}">
+  <input type="hidden" name="uid" value="{{.UID}}">
+  <input type="hidden" name="nf" value="{{len .Fields}}" data-count="f">
+  <input type="hidden" name="nx" value="{{len .Indexes}}" data-count="x">
+  <input type="hidden" name="nk" value="{{len .FKs}}" data-count="k">
+  <datalist id="fk-tables">{{range .Tables}}<option value="{{.}}">{{end}}</datalist>
+  {{if not .New}}<input type="hidden" name="t" value="{{.Table}}">{{end}}
+  <datalist id="type-hints">{{range .Hints}}<option value="{{.}}">{{end}}</datalist>
+
+  <div class="subbar">
+    <button type="button" class="tbtn primary" hx-post="/design/apply" hx-include="closest form" data-confirm-sql>{{icon "play"}}저장</button>
+    <span class="sep"></span>
+    <button type="button" class="tbtn active" data-sub="fields">필드</button>
+    <button type="button" class="tbtn" data-sub="indexes">인덱스</button>
+    <button type="button" class="tbtn" data-sub="fks">외래 키</button>
+    <button type="button" class="tbtn" data-sub="sql" hx-post="/design/preview" hx-include="closest form" hx-target="#pv-{{.UID}}" hx-swap="innerHTML">SQL 미리보기</button>
+    <span class="sep"></span>
+    <button type="button" class="tbtn" data-act="add-field">{{icon "plus"}}필드 추가</button>
+    <button type="button" class="tbtn" data-act="add-index">{{icon "plus"}}인덱스 추가</button>
+    <button type="button" class="tbtn" data-act="add-fk"{{if not .FKAlter}} disabled title="SQLite는 기존 테이블에 외래 키를 추가할 수 없습니다 (새 테이블을 만들 때만 가능)"{{end}}>{{icon "plus"}}외래 키 추가</button>
+    {{if .New}}
+    <label class="tname">테이블 이름 <input name="t" required spellcheck="false" placeholder="new_table" aria-label="테이블 이름"></label>
+    {{else if not .Alter}}
+    <span class="tip">이 DB는 필드 이름 변경·추가·삭제만 지원합니다 (유형/NULL/기본값은 SQL 에디터에서)</span>
+    {{end}}
+  </div>
+  <div class="design-msg" id="dm-{{.UID}}" aria-live="polite"></div>
+
+  <div class="gridwrap sub" data-subpane="fields">
+    <table class="grid designgrid">
+      <thead><tr><th>이름</th><th>유형</th><th class="center">NOT NULL</th><th>기본값 (SQL 표현식)</th><th class="center">기본키</th><th class="center">삭제</th></tr></thead>
+      <tbody data-rows="f">{{range .Fields}}{{template "field-row" .}}{{end}}</tbody>
+    </table>
+  </div>
+  <div class="gridwrap sub" data-subpane="indexes" hidden>
+    <table class="grid designgrid">
+      <thead><tr><th>이름</th><th>필드</th><th class="center">고유</th><th class="center">삭제</th></tr></thead>
+      <tbody data-rows="x">{{range .Indexes}}{{template "index-row" .}}{{end}}</tbody>
+    </table>
+  </div>
+  <div class="gridwrap sub" data-subpane="fks" hidden>
+    {{if and (not .New) (not .FKAlter)}}<div class="note">SQLite는 기존 테이블의 외래 키를 추가·삭제할 수 없습니다 (읽기 전용). 새 테이블을 만들 때만 정의할 수 있습니다.</div>{{end}}
+    <table class="grid designgrid">
+      <thead><tr><th>이름</th><th>필드</th><th>참조 테이블</th><th>참조 필드</th><th>ON DELETE</th><th>ON UPDATE</th><th class="center">삭제</th></tr></thead>
+      <tbody data-rows="k">{{range .FKs}}{{template "fk-row" .}}{{end}}</tbody>
+    </table>
+  </div>
+  <div class="gridwrap sub" data-subpane="sql" hidden>
+    <div id="pv-{{.UID}}"><div class="empty">'SQL 미리보기'를 누르면 적용될 문이 표시됩니다.</div></div>
+  </div>
+
+  <template data-tpl="f">{{template "field-row" (newField "__I__" $v.New)}}</template>
+  <template data-tpl="x">{{template "index-row" (newIndex "__I__")}}</template>
+  <template data-tpl="k">{{template "fk-row" (newFK "__I__")}}</template>
+</form>
+{{end}}{{end}}
+
+{{define "sqlpreview"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else if .SQL}}<pre class="sqlprev">{{.SQL}}</pre>{{else}}<div class="empty">변경 사항이 없습니다.</div>{{end}}{{end}}
+
+{{define "objinfo-general"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}
+<table class="info-table">
+  <tr><th>이름</th><td>{{.Table}}</td></tr>
+  <tr><th>유형</th><td>{{if .IsView}}뷰 (VIEW){{else}}테이블 (TABLE){{end}} · {{.Kind}}</td></tr>
+  {{if not .IsView}}<tr><th>행 수</th><td>{{.Rows}}</td></tr>{{end}}
+  <tr><th>필드</th><td>{{len .Cols}}개 — {{range $i, $c := .Cols}}{{if $i}}, {{end}}{{if $c.PK}}<span class="pk">{{icon "key"}}</span>{{end}}{{$c.Name}} <span class="dim">{{$c.Type}}</span>{{end}}</td></tr>
+  {{if .PKs}}<tr><th>기본키</th><td>{{.PKs}}</td></tr>{{end}}
+  <tr><th>인덱스</th><td>{{if .Indexes}}{{range $i, $x := .Indexes}}{{if $i}}, {{end}}{{$x.Name}}{{if $x.Unique}} <span class="dim">(고유)</span>{{end}}{{end}}{{else}}<span class="dim">없음</span>{{end}}</td></tr>
+  <tr><th>외래 키</th><td>{{if .FKs}}{{range $i, $f := .FKs}}{{if $i}}<br>{{end}}{{$f.Name}} <span class="dim">({{range $j, $c := $f.Columns}}{{if $j}}, {{end}}{{$c}}{{end}}) → {{$f.RefTable}}</span>{{end}}{{else}}<span class="dim">없음</span>{{end}}</td></tr>
+  {{if .Comment}}<tr><th>설명</th><td>{{.Comment}}</td></tr>{{end}}
+</table>
+{{end}}{{end}}
+
+{{define "objinfo-ddl"}}{{if .Err}}<div class="errbar">{{.Err}}</div>{{else}}<pre class="ddl">{{.DDL}}</pre>{{end}}{{end}}

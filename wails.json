@@ -1,0 +1,15 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "DBCat",
+  "outputfilename": "DBCat",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": {
+    "name": "Devora"
+  },
+  "info": {
+    "companyName": "Devora",
+    "productName": "DBCat",
+    "copyright": "Copyright (c) 2026 Devora (https://devora.kr)"
+  }
+}

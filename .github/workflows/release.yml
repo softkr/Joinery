@@ -1,0 +1,122 @@
+name: release
+
+# Push a tag like v0.1.0 to build macOS / Windows / Linux and publish a GitHub Release.
+# "Run workflow" (manual) builds the same artifacts without publishing a release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  WAILS_VERSION: v2.17.1 # keep in sync with github.com/wailsapp/wails/v2 in go.mod
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
+  build:
+    needs: test
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin/universal
+            label: macos-universal
+          - os: windows-latest
+            platform: windows/amd64
+            label: windows-amd64
+          - os: ubuntu-24.04
+            platform: linux/amd64
+            label: linux-amd64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: |
+          args=()
+          # Ubuntu 24.04 ships WebKitGTK 4.1 only, which Wails selects with this tag.
+          if [ "${RUNNER_OS}" = "Linux" ]; then args+=(-tags webkit2_41); fi
+          wails build -clean -trimpath -platform "${{ matrix.platform }}" -ldflags "-s -w" ${args[@]+"${args[@]}"}
+
+      - name: Package
+        env:
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+        run: |
+          mkdir -p dist
+          name="DBCat-${VERSION}-${{ matrix.label }}"
+          case "${{ runner.os }}" in
+            macOS)   ditto -c -k --keepParent build/bin/DBCat.app "dist/${name}.zip" ;;
+            Windows) powershell -NoProfile -Command "Compress-Archive -Path build/bin/DBCat.exe -DestinationPath dist/${name}.zip" ;;
+            Linux)   tar -czf "dist/${name}.tar.gz" -C build/bin DBCat ;;
+          esac
+          ls -l dist
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dbcat-${{ matrix.label }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release and upload assets
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          pattern: dbcat-*
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "${TAG}" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "${TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --title "DBCat ${TAG}" --generate-notes --verify-tag ${prerelease}
