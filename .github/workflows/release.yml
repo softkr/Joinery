@@ -36,9 +36,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Separate downloads per Mac CPU. Both build on the Apple Silicon runner;
+          # Go and clang cross-compile the Intel binary.
           - os: macos-latest
-            platform: darwin/universal
-            label: macos-universal
+            platform: darwin/arm64
+            label: macos-apple-silicon
+          - os: macos-latest
+            platform: darwin/amd64
+            label: macos-intel
           - os: windows-latest
             platform: windows/amd64
             label: windows-amd64

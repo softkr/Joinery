@@ -34,7 +34,8 @@ Joinery는 Go와 [Wails](https://wails.io)로 만든 단일 실행 파일 DB 클
 
 | 플랫폼 | 파일 | 참고 |
 |---|---|---|
-| macOS (Apple Silicon · Intel) | `Joinery-<버전>-macos-universal.zip` | 압축을 풀고 `Joinery.app`을 `응용 프로그램` 폴더로 옮깁니다 |
+| macOS (Apple Silicon: M1 이상) | `Joinery-<버전>-macos-apple-silicon.zip` | 압축을 풀고 `Joinery.app`을 `응용 프로그램` 폴더로 옮깁니다 |
+| macOS (Intel) | `Joinery-<버전>-macos-intel.zip` | 위와 같습니다. 내 Mac의 칩은 `Apple 메뉴 → 이 Mac에 관하여`에서 확인할 수 있습니다 |
 | Windows 10 / 11 (x64) | `Joinery-<버전>-windows-amd64.zip` | WebView2 런타임이 필요합니다 (Windows 11에는 기본 포함) |
 | Linux (x64) | `Joinery-<버전>-linux-amd64.tar.gz` | `libgtk-3-0`, `libwebkit2gtk-4.1-0` 패키지가 필요합니다 |
 
